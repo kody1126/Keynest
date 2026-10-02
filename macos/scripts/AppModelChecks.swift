@@ -1,0 +1,565 @@
+import Foundation
+import Darwin
+import AppKit
+
+/// Records publications in memory. Never touches NSPasteboard.general or an
+/// actual clipboard service, so no user content is read or overwritten.
+private final class FakePasteboard: VaultPasteboard {
+    var changeCount = 0
+    var options: NSPasteboard.ContentsOptions = []
+    var value: String?
+    var types: Set<NSPasteboard.PasteboardType> = []
+    var writeCount = 0
+    var failWrite = false
+    var externalCopyDuringWrite = false
+    func prepareForNewContents(with options: NSPasteboard.ContentsOptions) -> Int {
+        self.options = options; value = nil; types = []; changeCount += 1
+        return changeCount
+    }
+    func writeObjects(_ objects: [NSPasteboardWriting]) -> Bool {
+        guard !failWrite, objects.count == 1, let item = objects.first as? NSPasteboardItem else { return false }
+        value = item.string(forType: .string); types = Set(item.types)
+        writeCount += 1
+        if externalCopyDuringWrite { simulateExternalCopy("external copy during publication") }
+        return true
+    }
+    func clearContents() -> Int { value = nil; types = []; changeCount += 1; return changeCount }
+    func simulateExternalCopy(_ value: String) { self.value = value; changeCount += 1 }
+}
+
+private final class DirectorySyncControl: @unchecked Sendable {
+    private let mutex = NSLock()
+    private var shouldFail = false
+    func setFailure(_ value: Bool) { mutex.withLock { shouldFail = value } }
+    func sync(_ fd: Int32) -> Int32 {
+        if mutex.withLock({ shouldFail }) { errno = EIO; return -1 }
+        return Darwin.fsync(fd)
+    }
+}
+
+private struct AppCheckFailure: Error, CustomStringConvertible {
+    let description: String
+}
+
+/// Deterministic authentication stand-in. These checks never call the real sensor.
+private final class FakeBiometricAccess: BiometricVaultAccessing, @unchecked Sendable {
+    private let mutex = NSLock()
+    private var storedToken: Data?
+    private var continuation: CheckedContinuation<Data, Error>?
+    var failAuthentication = false
+    var delayAuthentication = false
+    private(set) var unlockCalls = 0
+    var hasPendingAuthentication: Bool { mutex.withLock { continuation != nil } }
+    var token: Data? { mutex.withLock { storedToken } }
+    func status() async -> BiometricStatus { mutex.withLock { storedToken == nil ? .notEnrolled : .enrolled } }
+    func enroll(token: Data) async throws { mutex.withLock { storedToken = token } }
+    func remove() async throws { mutex.withLock { storedToken = nil } }
+    func cancel() { /* Simulate a callback racing with cancellation. AppModel must reject it. */ }
+    func unlockData() async throws -> Data {
+        unlockCalls += 1
+        if failAuthentication { throw AppCheckFailure(description: "Simulated failed authentication") }
+        if delayAuthentication {
+            return try await withCheckedThrowingContinuation { value in mutex.withLock { continuation = value } }
+        }
+        guard let token else { throw AppCheckFailure(description: "No enrolled token") }
+        return token
+    }
+    func finishPendingAuthentication() {
+        let pending = mutex.withLock { let result = continuation; continuation = nil; return result }
+        pending?.resume(returning: token ?? Data())
+    }
+}
+
+@MainActor
+private final class AppChecks {
+    private(set) var assertions = 0
+
+    private func expect(_ condition: @autoclosure () throws -> Bool, _ message: String,
+                        line: UInt = #line) throws {
+        assertions += 1
+        guard try condition() else {
+            throw AppCheckFailure(description: "line \(line): \(message)")
+        }
+    }
+
+    private func entry(_ id: UUID, in model: AppModel) throws -> SecretEntry {
+        try expect(model.entries.contains { $0.id == id }, "Expected saved entry to exist")
+        return model.entries.first { $0.id == id }!
+    }
+
+    func run() async throws {
+        // Refuse to initialize AppModel until a fresh, explicitly supplied
+        // /private/tmp vault is proven. Never permit its default data directory.
+        let arguments = CommandLine.arguments
+        try expect(arguments.count == 3 && arguments[1] == "--test-data-directory",
+                   "An explicit isolated test directory is required")
+        let path = arguments[2]
+        let directory = URL(fileURLWithPath: path, isDirectory: true)
+        try expect(path.range(of: "^/private/tmp/keynest-app-checks\\.[A-Za-z0-9]+/vault$",
+                              options: .regularExpression) != nil,
+                   "Test directory must be an absolute generated temporary path")
+        try expect(directory.lastPathComponent == "vault" &&
+                   directory.deletingLastPathComponent().lastPathComponent.hasPrefix("keynest-app-checks.") &&
+                   directory.deletingLastPathComponent().deletingLastPathComponent().path == "/private/tmp",
+                   "Only a fresh keynest-app-checks temporary vault is accepted")
+        var isDirectory: ObjCBool = false
+        try expect(FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue,
+                   "Temporary vault directory must already exist")
+        // Foundation may abbreviate an existing /private/tmp path to /tmp
+        // when resolving symlinks. Inspect our two generated components instead.
+        let vaultValues = try directory.resourceValues(forKeys: [.isSymbolicLinkKey])
+        let rootValues = try directory.deletingLastPathComponent().resourceValues(forKeys: [.isSymbolicLinkKey])
+        try expect(vaultValues.isSymbolicLink == false && rootValues.isSymbolicLink == false,
+                   "Generated temporary directories must not be symlinks")
+        let initialFiles = try FileManager.default.contentsOfDirectory(atPath: path)
+        try expect(initialFiles.isEmpty, "Temporary vault directory must be empty")
+        try expect(Bundle.main.bundleIdentifier != "local.keynest.demo", "Never initialize a demo or real bundle profile")
+
+        let biometric = FakeBiometricAccess()
+        let pasteboard = FakePasteboard()
+        let directorySync = DirectorySyncControl()
+        var uptime: TimeInterval = 100
+        let model = AppModel(biometricAccess: biometric, pasteboard: pasteboard, monotonicNow: { uptime },
+                             makeStorage: { try VaultStorage(directory: $0, directorySync: { directorySync.sync($0) }) })
+        defer { model.lock() }
+        try expect(model.dataPath == directory.standardizedFileURL.appendingPathComponent("vault.keynest").path,
+                   "AppModel must use the explicit temporary directory")
+        try expect(model.errorMessage == nil && !model.isInitialized && model.isLocked,
+                   "Isolated model must start without an existing vault")
+        try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all,
+                   "An empty model starts on Home without implicitly selecting a credential")
+        let password = "Keynest-App-Checks-Only-2026"
+        await model.create(password: password)
+        try expect(model.errorMessage == nil && model.isInitialized && !model.isLocked,
+                   "Create should open an empty encrypted vault")
+        try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all,
+                   "Creating a vault must keep Home as the default without a selected credential")
+
+        let orbit = ToolGroup(name: "Orbit Lab", notes: "Fictional test tool")
+        let notebook = ToolGroup(name: "Notebook Bench", notes: "Fictional test tool")
+        try model.saveTool(orbit)
+        try model.saveTool(notebook)
+        try expect(Set(model.tools.map(\.id)) == [orbit.id, notebook.id], "Both tools must be saved")
+        let shared = SecretEntry(name: "Shared test credential", provider: "Example Test Provider",
+                                 secret: "fake-only-secret-alpha-z7q9-not-an-api-key",
+                                 baseURL: "https://api.example.invalid/v1", toolIDs: [orbit.id, notebook.id],
+                                 environment: "development", accountLabel: "personal-sample")
+        let production = SecretEntry(name: "Production test credential", provider: "Example Test Provider",
+                                     secret: "fake-only-secret-beta-v8r4-not-an-api-key",
+                                     baseURL: "https://api.example.invalid/v2", toolIDs: [notebook.id],
+                                     environment: "production", accountLabel: "work-sample")
+        try model.save(shared)
+        try model.save(production)
+        try expect(model.entries.count == 2 && model.tools.count == 2, "Saving entries must preserve tool records")
+        try expect(Set(try entry(shared.id, in: model).toolIDs) == [orbit.id, notebook.id],
+                   "One shared entry must refer to both tools")
+
+        model.selectFilter(.tool(orbit.id))
+        try expect(model.filteredEntries.map(\.id) == [shared.id], "Tool filter must select its associated entry")
+        model.searchText = "personal-sample"
+        try expect(model.filteredEntries.map(\.id) == [shared.id], "Account search must match metadata")
+        model.environmentFilter = "development"
+        model.selectFilter(.tool(notebook.id))
+        try expect(model.searchText.isEmpty && model.environmentFilter == nil,
+                   "Switching tools must clear the previous search and environment")
+        try expect(Set(model.filteredEntries.map(\.id)) == [shared.id, production.id],
+                   "The second tool must show both associated entries")
+        try expect(model.selectedID.map { Set(model.filteredEntries.map(\.id)).contains($0) } == true,
+                   "Tool switching must select an entry from the new result set")
+        model.environmentFilter = "production"
+        try expect(model.filteredEntries.map(\.id) == [production.id], "Environment filter must narrow within a tool")
+        model.searchText = "work-sample"
+        try expect(model.filteredEntries.map(\.id) == [production.id], "Account and environment filters must combine")
+        model.selectFilter(.all)
+        model.searchText = "Orbit Lab"
+        try expect(model.filteredEntries.map(\.id) == [shared.id], "Tool name must be searchable from all entries")
+        model.searchText = "development"
+        try expect(model.filteredEntries.map(\.id) == [shared.id], "Environment text must be searchable")
+        model.searchText = shared.secret
+        try expect(model.filteredEntries.isEmpty, "Search must never match secret text")
+        model.searchText = production.secret
+        try expect(model.filteredEntries.isEmpty, "Search must exclude every entry's secret text")
+
+        try model.saveLinks([production.id], for: orbit)
+        try expect(Set(model.entries.map(\.id)) == [shared.id, production.id],
+                   "Changing associations must not duplicate or delete credential entities")
+        try expect(Set(try entry(shared.id, in: model).toolIDs) == [notebook.id],
+                   "Unchecking a link must preserve the other tool association")
+        try expect(Set(try entry(production.id, in: model).toolIDs) == [orbit.id, notebook.id],
+                   "Adding a link must preserve the existing association")
+        try expect(model.tools.count == 2, "Saving links must preserve tool records")
+        try expect(model.filter == .tool(orbit.id) && model.selectedID == production.id,
+                   "Saving links must select the edited tool and one of its current entries")
+
+        model.toggleFavorite(shared)
+        try expect(model.errorMessage == nil, "Favorite persistence must succeed")
+        let favorite = try entry(shared.id, in: model)
+        try expect(favorite.isFavorite && favorite.toolIDs == [notebook.id],
+                   "Favorite updates must preserve current associations even with a stale caller snapshot")
+        try expect(model.tools.count == 2, "Favorite updates must preserve tools")
+        let untouched = try entry(production.id, in: model)
+        let toolsBeforeEdit = model.tools
+        var edited = favorite
+        edited.name = "Edited shared credential"
+        edited.environment = "staging"
+        edited.accountLabel = "personal-updated"
+        try model.save(edited)
+        try expect(model.tools == toolsBeforeEdit, "Saving an edit must preserve both tool records")
+        try expect(try entry(production.id, in: model) == untouched, "Saving one entry must not change another")
+        try expect(try entry(shared.id, in: model).toolIDs == [notebook.id], "Editing metadata must retain associations")
+
+        var renamed = model.tools.first { $0.id == orbit.id }!
+        renamed.name = "Renamed Orbit Lab"
+        let entriesBeforeRename = model.entries
+        try model.saveTool(renamed)
+        try expect(model.entries == entriesBeforeRename && model.tools.count == 2,
+                   "Editing a tool must preserve all entries and the other tool")
+        try model.removeTool(renamed)
+        try expect(model.tools.map(\.id) == [notebook.id], "Removing a tool must preserve the other tool")
+        try expect(Set(model.entries.map(\.id)) == [shared.id, production.id], "Removing a tool must retain both credentials")
+        try expect(model.entries.allSatisfy { $0.toolIDs == [notebook.id] },
+                   "Removing a tool must remove only its own associations")
+        try expect(model.filter == .all, "Removing the selected tool must return to an existing filter")
+
+        model.addTool()
+        try expect(model.presentingToolSetup && !model.presentingToolEditor,
+                   "Add tool must open the template picker")
+        model.presentingToolSetup = false
+        let cline = ToolTemplate.match(templateID: "cline")!
+        let slot = cline.credentialSlots[0]
+        let preset = ProviderPreset.all.first { $0.id == slot.defaultProviderID }!
+        try model.saveTemplate(cline, name: "Fixture Cline", selections: [
+            ToolCredentialSelection(slotID: slot.id, providerID: preset.id,
+                                    secret: "fake-only-template-key", baseURL: preset.baseURL)
+        ])
+        let firstTemplate = model.tools.first { $0.name == "Fixture Cline" }!
+        let templateKey = model.entries.first { $0.toolIDs.contains(firstTemplate.id) }!
+        try expect(firstTemplate.templateID == "cline" && model.entries.count == 3 && model.tools.count == 2,
+                   "Template creation must persist the tool and its new credential together")
+        try expect(!model.presentingToolSetup && model.filter == .tool(firstTemplate.id),
+                   "Successful creation closes the sheet and selects the new tool")
+        try model.saveTemplate(cline, name: "Fixture shared Cline", selections: [
+            ToolCredentialSelection(slotID: slot.id, providerID: preset.id, existingEntryID: templateKey.id)
+        ])
+        try expect(model.entries.count == 3 && model.entries.first { $0.id == templateKey.id }!.toolIDs.count == 2,
+                   "Reusing a credential must associate the same entity without duplicating its secret")
+        let beforeFailure = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
+        let toolsBeforeFailure = model.tools
+        do {
+            try model.saveTemplate(cline, name: "Invalid fixture", selections: [])
+            throw AppCheckFailure(description: "Missing template credentials were accepted")
+        } catch is VaultError { }
+        try expect(model.tools == toolsBeforeFailure &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == beforeFailure,
+                   "An invalid template must not change memory or the encrypted file")
+
+        // Home is a browsing surface. Opening a draft or choosing a provider
+        // must not persist a credential or silently choose one of several keys.
+        model.searchText = "previous tool query"
+        model.environmentFilter = "old environment"
+        model.homeScope = .favorites
+        model.selectFilter(.home)
+        try expect(model.filter == .home && model.selectedID == nil && model.searchText.isEmpty &&
+                   model.environmentFilter == nil && model.homeScope == .all,
+                   "Entering Home must clear prior tool selection, query, environment and scope")
+        let homePreset = ProviderPreset.match(provider: "openai")!
+        let beforeHomeDraft = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
+        let entriesBeforeHomeDraft = model.entries
+        let toolsBeforeHomeDraft = model.tools
+        model.addNew()
+        try expect(model.presentingHomeProviderPicker && !model.presentingEditor && model.editingEntry == nil,
+                   "Add from Home must open the platform picker before creating an entry draft")
+        try expect(model.entries == entriesBeforeHomeDraft && model.tools == toolsBeforeHomeDraft &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == beforeHomeDraft,
+                   "Opening the Home provider picker must not alter memory or ciphertext")
+        model.quickAdd(homePreset)
+        try expect(!model.presentingHomeProviderPicker && model.quickAddPreset == homePreset &&
+                   model.editingEntry == nil && !model.presentingEditor,
+                   "Choosing a preset opens only the quick draft and dismisses the platform picker")
+        try expect(model.entries == entriesBeforeHomeDraft && model.tools == toolsBeforeHomeDraft &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == beforeHomeDraft,
+                   "Quick add must not insert an empty record or change the encrypted file")
+
+        var homeDraft = homePreset.applying(to: SecretEntry())
+        homeDraft.name = "Home work credential"
+        homeDraft.secret = "fake-only-home-work-secret-not-an-api-key"
+        homeDraft.baseURL = "https://home-work.example.invalid/v1"
+        homeDraft.website = "https://home-console.example.invalid"
+        homeDraft.category = .skill; homeDraft.tags = ["home-fixture", "work"]
+        homeDraft.notes = "Preserve this draft when opening advanced fields"
+        homeDraft.accountLabel = "home-work-account"; homeDraft.environment = "production"
+        homeDraft.toolIDs = [notebook.id]; homeDraft.isFavorite = true
+        model.openAdvancedEntry(homeDraft)
+        try expect(model.quickAddPreset == nil && !model.presentingHomeProviderPicker &&
+                   model.presentingEditor && model.editingEntry == homeDraft,
+                   "Opening advanced entry must preserve every draft field and dismiss quick add")
+        try expect(model.entries == entriesBeforeHomeDraft && model.tools == toolsBeforeHomeDraft &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == beforeHomeDraft,
+                   "Opening advanced fields must leave saved entries and ciphertext untouched")
+        model.searchText = "would hide a new key"
+        model.environmentFilter = "nonmatching environment"
+        model.homeScope = .services
+        try model.save(homeDraft)
+        try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all &&
+                   model.searchText.isEmpty && model.environmentFilter == nil,
+                   "Saving from Home stays on Home, clears filters and never auto-selects a key")
+        try expect(!model.presentingEditor && model.editingEntry == nil && model.quickAddPreset == nil,
+                   "Saving the Home draft must close and clear both editor states")
+        var savedHome = try entry(homeDraft.id, in: model)
+        savedHome.createdAt = homeDraft.createdAt; savedHome.updatedAt = homeDraft.updatedAt
+        try expect(savedHome == homeDraft && model.tools == toolsBeforeHomeDraft &&
+                   model.entries.count == entriesBeforeHomeDraft.count + 1,
+                   "The saved Home credential must preserve all user fields and existing tools")
+
+        let personalHome = SecretEntry(name: "Home personal credential", provider: "ChatGPT",
+                                       secret: "fake-only-home-personal-secret-not-an-api-key",
+                                       baseURL: "https://home-personal.example.invalid/v1",
+                                       environment: "development", accountLabel: "home-personal-account")
+        model.quickAdd(homePreset)
+        try model.save(personalHome)
+        let homeGroups = HomeCatalog.groups(entries: model.entries, tools: model.tools)
+        let openAIGroup = homeGroups.first { $0.id == "openai" }
+        try expect(openAIGroup?.entries.count == 2 &&
+                   Set(openAIGroup?.entries.map(\.id) ?? []) == [homeDraft.id, personalHome.id],
+                   "Two keys on one provider remain distinct entries in the same Home group")
+        try expect(model.selectedID == nil && model.filter == .home && model.quickAddPreset == nil,
+                   "Saving a second key must not implicitly choose either provider credential")
+        let beforeExplicitNavigation = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
+        let entriesBeforeNavigation = model.entries
+        var stalePersonalSnapshot = personalHome
+        stalePersonalSnapshot.name = "Do not overwrite saved display name"
+        stalePersonalSnapshot.secret = "Do not use stale credential data"
+        model.showEntry(stalePersonalSnapshot)
+        try expect(model.filter == .all && model.selectedID == personalHome.id &&
+                   model.selectedEntry == model.entries.first { $0.id == personalHome.id },
+                   "Opening a provider row explicitly selects its current saved record by ID")
+        try expect(model.selectedEntry?.secret == personalHome.secret &&
+                   model.entries == entriesBeforeNavigation &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == beforeExplicitNavigation,
+                   "Explicit navigation must neither reuse stale caller data nor write the vault")
+        model.searchText = "retained query"; model.environmentFilter = "retained environment"
+        model.homeScope = .models
+        model.showEntry(SecretEntry(name: "Deleted fixture", secret: "fake-only-deleted"))
+        try expect(model.filter == .all && model.selectedID == personalHome.id &&
+                   model.searchText == "retained query" && model.environmentFilter == "retained environment" &&
+                   model.homeScope == .models,
+                   "A stale or deleted entry ID must not change navigation or search state")
+
+        model.selectFilter(.home)
+        model.addNew()
+        model.addCustomCredential()
+        try expect(model.presentingEditor && !model.presentingHomeProviderPicker && model.quickAddPreset == nil &&
+                   model.editingEntry?.name == "自定义 API" && model.editingEntry?.category == .other &&
+                   model.editingEntry?.secret.isEmpty == true && model.editingEntry?.provider.isEmpty == true,
+                   "Custom API must bypass the provider picker and open an empty advanced draft")
+        try expect(model.entries == entriesBeforeNavigation &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == beforeExplicitNavigation,
+                   "Starting a custom draft must not save an incomplete credential")
+        model.presentingEditor = false; model.editingEntry = nil
+        model.addTool()
+
+        let savedEntries = model.entries
+        let savedTools = model.tools
+        model.editTool(savedTools[0])
+        model.manageLinks(for: savedTools[0])
+        model.edit(savedEntries[0])
+        model.presentingRestore = true
+        model.presentingPasswordChange = true
+        model.searchText = "temporary query"
+        model.environmentFilter = "staging"
+        model.homeScope = .favorites
+        model.quickAdd(homePreset)
+        model.presentingHomeProviderPicker = true
+        model.lock()
+        try expect(model.isLocked && model.entries.isEmpty && model.tools.isEmpty, "Lock must clear decrypted entries and tools")
+        try expect(!model.presentingToolSetup && !model.presentingToolEditor && model.editingTool == nil, "Lock must close and clear the tool editor")
+        try expect(!model.presentingToolLinks && model.linkingTool == nil, "Lock must close and clear the association sheet")
+        try expect(!model.presentingEditor && model.editingEntry == nil, "Lock must close and clear the credential editor")
+        try expect(!model.presentingRestore && !model.presentingPasswordChange, "Lock must close backup/password sheets")
+        try expect(model.searchText.isEmpty && model.environmentFilter == nil && model.filter == .home &&
+                   model.homeScope == .all && model.selectedID == nil,
+                   "Lock must reset Home, search, environment, scope and selection")
+        try expect(!model.presentingHomeProviderPicker && model.quickAddPreset == nil && model.copyFeedback == nil,
+                   "Lock must close quick add and the provider picker and clear copy feedback")
+        let lockedFile = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
+        model.addNew(); model.quickAdd(homePreset); model.openAdvancedEntry(homeDraft)
+        model.addCustomCredential(); model.showEntry(savedEntries[0])
+        try expect(model.isLocked && model.filter == .home && model.selectedID == nil &&
+                   !model.presentingHomeProviderPicker && model.quickAddPreset == nil &&
+                   !model.presentingEditor && model.editingEntry == nil && model.entries.isEmpty && model.tools.isEmpty,
+                   "Locked Home actions must not open drafts, select a record or restore decrypted state")
+        try expect((try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == lockedFile,
+                   "Rejected locked Home actions must not alter the encrypted vault")
+        await model.unlock(password: password)
+        try expect(model.errorMessage == nil && !model.isLocked, "The same isolated vault must unlock")
+        try expect(model.entries == savedEntries, "Unlock must recover saved credentials and their associations exactly")
+        try expect(model.tools == savedTools, "Unlock must recover saved tool records exactly")
+        try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all &&
+                   model.searchText.isEmpty && model.environmentFilter == nil,
+                   "Password unlock must open Home with no implicitly selected credential")
+
+        await model.refreshBiometricStatus()
+        try expect(model.biometricAvailable && !model.biometricEnabled, "A capable device starts with biometrics disabled")
+        await model.enableBiometrics()
+        try expect(model.biometricEnabled && biometric.token != nil, "Enrollment stores a token only after an unlocked session")
+        model.lock()
+        await model.unlockWithBiometrics()
+        try expect(!model.isLocked && model.entries == savedEntries && model.tools == savedTools,
+                   "Authenticated token must decrypt exactly the same vault")
+        try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all &&
+                   model.searchText.isEmpty && model.environmentFilter == nil,
+                   "Biometric unlock must open Home with no implicitly selected credential")
+        model.lock()
+        let callsAfterLock = biometric.unlockCalls
+        await model.prepareAccess()
+        try expect(model.isLocked && biometric.unlockCalls == callsAfterLock,
+                   "An explicit lock must not immediately trigger an automatic unlock")
+        await model.disableBiometrics()
+        try expect(biometric.token != nil, "A locked model must not change enrollment")
+        biometric.failAuthentication = true
+        await model.unlockWithBiometrics()
+        try expect(model.isLocked && model.entries.isEmpty && model.biometricMessage != nil,
+                   "Failed biometric authentication must leave decrypted state empty")
+        biometric.failAuthentication = false
+        biometric.delayAuthentication = true
+        let pendingUnlock = Task { await model.unlockWithBiometrics() }
+        for _ in 0..<100 where !biometric.hasPendingAuthentication { try await Task.sleep(for: .milliseconds(10)) }
+        try expect(biometric.hasPendingAuthentication, "The fake authentication callback must be pending")
+        model.lock()
+        biometric.finishPendingAuthentication()
+        await pendingUnlock.value
+        try expect(model.isLocked && model.entries.isEmpty && model.tools.isEmpty,
+                   "A late biometric callback must never undo a newer lock")
+        let cancelledUnlock = Task { await model.unlockWithBiometrics() }
+        for _ in 0..<100 where !biometric.hasPendingAuthentication { try await Task.sleep(for: .milliseconds(10)) }
+        try expect(biometric.hasPendingAuthentication, "The second callback must be pending before password fallback")
+        model.cancelBiometricAuthentication()
+        biometric.finishPendingAuthentication()
+        await cancelledUnlock.value
+        try expect(model.isLocked && model.entries.isEmpty,
+                   "A late biometric callback must not unlock after the user switches to password")
+        biometric.delayAuthentication = false
+        await model.unlock(password: password)
+        let replacementPassword = "Keynest-App-Checks-New-2026"
+        await model.replacePassword(old: password, new: replacementPassword)
+        try expect(model.errorMessage == nil && !model.biometricEnabled && biometric.token == nil,
+                   "Changing the main password must revoke the old biometric token")
+        model.lock()
+        await model.unlock(password: replacementPassword)
+        try expect(!model.isLocked && model.entries == savedEntries, "New password must preserve all saved credentials")
+        try expect(model.filter == .home && model.selectedID == nil,
+                   "Unlock after changing the password must still default to Home without selection")
+        await model.enableBiometrics()
+        await model.disableBiometrics()
+        try expect(!model.biometricEnabled && biometric.token == nil, "Disabling biometrics must remove its persisted token")
+
+        // A cancelled decrypt must not merge records after its sheet disappears.
+        let importPassword = "Fake-Import-Checks-2026"
+        let imported = SecretEntry(name: "Cancelled import fixture", secret: "fake-only-import-must-not-leak")
+        let incoming = try VaultCodec.encrypt(VaultDocument(entries: [imported]),
+                                             session: VaultCodec.createSession(password: importPassword))
+        let beforeImportEntries = model.entries
+        let beforeImportBytes = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
+        try model.stageImport(incoming)
+        let cancelledRestore = Task { await model.restore(password: importPassword) }
+        for _ in 0..<1000 {
+            if model.busy { break }
+            await Task.yield()
+        }
+        try expect(model.busy, "Restore must reach its asynchronous decryption before cancellation")
+        model.cancelRestore()
+        await cancelledRestore.value
+        try expect(model.entries == beforeImportEntries && !model.presentingRestore && !model.busy,
+                   "Cancelling a pending import must leave entries unchanged and its sheet closed")
+        try expect(try Data(contentsOf: directory.appendingPathComponent("vault.keynest")) == beforeImportBytes,
+                   "Cancelled import must not rewrite encrypted storage")
+        try expect(model.errorMessage == nil, "Cancelled import must not post a delayed error")
+        try model.stageImport(incoming)
+        await model.restore(password: importPassword)
+        try expect(model.entries.contains { $0.id == imported.id } && !model.presentingRestore,
+                   "A new non-cancelled import must still merge and close successfully")
+
+        // Publish one complete, local-only item, using the current record by ID.
+        var stale = imported; stale.secret = "stale-do-not-copy"
+        model.copySecret(stale)
+        try expect(pasteboard.value == imported.secret && pasteboard.writeCount == 1,
+                   "Copy must publish the current credential exactly once, not a stale snapshot")
+        try expect(pasteboard.options.contains(.currentHostOnly),
+                   "Copied credentials must explicitly opt out of Universal Clipboard")
+        try expect(pasteboard.types.contains(.string) &&
+                   pasteboard.types.contains(.init("org.nspasteboard.ConcealedType")) &&
+                   pasteboard.types.contains(.init("org.nspasteboard.TransientType")),
+                   "Sensitive markers must accompany the secret in the same publication")
+        try expect(model.copyFeedback == .secret(imported.id), "Successful copy should identify the actual record")
+        model.lock()
+        try expect(pasteboard.value == nil && model.copyFeedback == nil, "Lock must clear an owned copied secret")
+        model.copySecret(imported)
+        try expect(pasteboard.writeCount == 1, "Locked copy must never republish a supplied credential")
+        model.errorMessage = nil
+        await model.unlock(password: replacementPassword)
+        model.copySecret(imported)
+        pasteboard.simulateExternalCopy("unrelated user clipboard")
+        model.lock()
+        try expect(pasteboard.value == "unrelated user clipboard", "Lock must preserve a later unrelated copy")
+        await model.unlock(password: replacementPassword)
+        pasteboard.externalCopyDuringWrite = true
+        model.copySecret(imported)
+        model.lock()
+        try expect(pasteboard.value == "external copy during publication",
+                   "A competing copy during write must not be mistaken for our owned content")
+        pasteboard.externalCopyDuringWrite = false
+        await model.unlock(password: replacementPassword)
+        pasteboard.failWrite = true
+        model.copySecret(imported)
+        try expect(model.copyFeedback == nil && model.errorMessage != nil, "Failed clipboard writes must not report success")
+        pasteboard.failWrite = false; model.errorMessage = nil
+
+        // Idle expiry uses elapsed monotonic time, independent of wall-clock edits.
+        uptime += 599
+        model.copySecret(imported)
+        try expect(!model.isLocked, "Activity before ten minutes must still succeed")
+        let writesBeforeIdle = pasteboard.writeCount
+        uptime += 601
+        model.copySecret(imported)
+        try expect(model.isLocked && pasteboard.value == nil && pasteboard.writeCount == writesBeforeIdle,
+                   "An expired session must lock and clear the clipboard before allowing a copy")
+        try expect(model.entries.isEmpty && model.tools.isEmpty, "Idle expiry must release decrypted records")
+
+        model.errorMessage = nil
+        await model.unlock(password: replacementPassword)
+        directorySync.setFailure(true)
+        var durableFixture = imported; durableFixture.name = "Committed despite directory sync failure"
+        try model.save(durableFixture)
+        try expect(model.entries.first(where: { $0.id == imported.id })?.name == durableFixture.name && model.errorMessage != nil,
+                   "A committed write with uncertain directory durability must update memory and warn")
+        let committed = try VaultCodec.decrypt(Data(contentsOf: directory.appendingPathComponent("vault.keynest")),
+                                              password: replacementPassword).document
+        try expect(committed.entries == model.entries && committed.tools == model.tools,
+                   "A post-rename sync failure must not leave disk and memory diverged")
+        model.errorMessage = nil
+        let faultPassword = "Keynest-Sync-Fault-Password-2026"
+        await model.replacePassword(old: replacementPassword, new: faultPassword)
+        try expect(model.errorMessage != nil && !model.presentingPasswordChange,
+                   "A committed password change must close successfully with a durability warning")
+        directorySync.setFailure(false)
+        model.lock()
+        await model.unlock(password: faultPassword)
+        try expect(!model.isLocked && model.entries.first(where: { $0.id == imported.id })?.name == durableFixture.name,
+                   "The new password must unlock committed data after a post-rename directory sync failure")
+    }
+}
+
+@main
+private struct AppModelCheckMain {
+    @MainActor static func main() async {
+        let checks = AppChecks()
+        do {
+            try await checks.run()
+            print("PASS AppModel integration: \(checks.assertions) assertions; isolated temporary vault only.")
+            exit(0)
+        } catch {
+            print("FAIL AppModel integration after \(checks.assertions) assertions: \(error)")
+            exit(1)
+        }
+    }
+}

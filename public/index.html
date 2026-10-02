@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Keynest · 本地 API 收藏</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div id="access" class="access-shell">
+    <section class="access-story">
+      <a class="brand" href="#"><span class="brand-mark" aria-hidden="true">k</span><span>Keynest<span class="brand-sub">API VAULT LAB</span></span></a>
+      <div class="story-content"><span class="eyebrow">A LITTLE SPACE FOR YOUR KEYS</span><h1>把你的 API，<br>收进一个安心的地方。</h1><p>从模型到小工具，让散落的密钥有处可寻。<br>数据保存在这台电脑，按需查看服务额度。</p><div class="story-pills"><span>本地加密存储</span><span>无云端账户</span><span>官方额度查询</span></div></div>
+      <p class="story-footer">你的工具箱，由你保管。<span>实验版 · v0.1</span></p>
+    </section>
+    <main class="access-main">
+      <div id="loading-panel" class="access-card"><span class="access-symbol" aria-hidden="true">⌘</span><h2>正在连接本地密钥库</h2><p class="muted">数据只从本机服务读取。</p></div>
+      <div id="connection-panel" class="access-card" hidden><span class="access-symbol" aria-hidden="true">↗</span><h2>从本机启动链接进入</h2><p id="connection-message" class="muted">请打开终端中包含会话令牌的完整链接。令牌不会保存在浏览器中，刷新页面后需要重新打开该链接。</p><button id="retry" type="button" class="button primary">重新连接</button></div>
+      <form id="access-form" class="access-card" hidden>
+        <span class="access-symbol" aria-hidden="true">⌘</span><span id="access-label" class="eyebrow">YOUR LOCAL VAULT</span><h2 id="access-title">创建你的密钥库</h2><p id="access-description" class="muted">设置一个主密码，用于加密保存在本机的数据。</p>
+        <label class="field">主密码<input id="access-password" type="password" autocomplete="off" required maxlength="1024" autofocus></label>
+        <label id="confirm-field" class="field">再次输入主密码<input id="confirm-password" type="password" autocomplete="off" maxlength="1024"></label>
+        <p id="password-hint" class="field-hint">至少 12 个字符。请妥善保存，遗失后无法找回。</p>
+        <p id="access-error" class="error-message" role="alert" hidden></p>
+        <button id="access-submit" type="submit" class="button primary full">创建并解锁</button>
+        <button id="access-restore" type="button" class="text-button full">从加密备份恢复</button>
+        <p class="security-footnote">这是未经独立安全审计的实验版。建议先使用测试密钥体验。</p>
+      </form>
+    </main>
+  </div>
+
+  <div id="workspace" class="workspace" hidden>
+    <aside class="sidebar">
+      <a class="brand" href="#"><span class="brand-mark" aria-hidden="true">k</span><span>Keynest<span class="brand-sub">API VAULT LAB</span></span></a>
+      <div class="sidebar-section-label">我的收藏</div>
+      <nav id="provider-nav" aria-label="服务商分类"></nav>
+      <div class="sidebar-bottom"><div class="local-status"><span class="status-dot"></span>本机存储<span class="badge">实验版</span></div><p>密钥库已解锁<br>闲置 10 分钟后自动锁定</p><button id="lock-button" type="button" class="button quiet full"><span aria-hidden="true">◇</span> 锁定密钥库</button></div>
+    </aside>
+    <main class="main-content">
+      <header class="topbar"><div class="breadcrumb">个人空间 <span>/</span> API 收藏</div><div class="topbar-actions"><button id="backup-button" class="text-button" type="button">导出加密备份</button><button id="restore-button" class="text-button" type="button">恢复备份</button></div></header>
+      <section class="page-heading"><div><div class="eyebrow">EVERY KEY, IN ONE PLACE</div><h1>我的 API 收藏<span id="entry-count" class="count-bubble">0</span></h1><p>收藏密钥，记录用途，掌握可查询的额度。</p></div><button id="add-button" type="button" class="button primary"><span aria-hidden="true">＋</span> 添加 API</button></section>
+      <section class="overview" aria-label="收藏概览"><div><span class="overview-label">已收藏密钥</span><strong id="stat-total">0</strong><span class="overview-note">保存在本机加密库</span></div><div><span class="overview-label">服务商</span><strong id="stat-providers">0</strong><span class="overview-note">模型与工具，一起整理</span></div><div><span class="overview-label">支持额度查询</span><strong id="stat-syncable">0</strong><span class="overview-note">按官方接口提供的范围</span></div></section>
+      <div class="collection-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜索名称、服务商或标签" aria-label="搜索收藏" autocomplete="off"><kbd>⌘ K</kbd></label><label class="auto-option"><input id="auto-sync" type="checkbox">本次会话每 5 分钟刷新额度</label></div>
+      <div class="collection-layout"><section class="collection-panel" aria-label="API 收藏列表"><div class="panel-heading"><h2 id="collection-title">全部 API</h2><span id="visible-count" class="muted small">0 项</span></div><div id="entry-list" class="entry-list"></div><div id="empty-state" class="empty-state"><span class="empty-symbol" aria-hidden="true">＋</span><h3 id="empty-title">从第一枚密钥开始</h3><p id="empty-description">为 API 加上名称与用途，下次需要时轻松找到。</p><button id="empty-add" class="button secondary" type="button">添加 API</button></div></section><aside id="details" class="details-panel" aria-label="API 详情"><div class="details-placeholder"><span aria-hidden="true">⌘</span><h3>每一枚密钥，都井井有条。</h3><p>选择一项收藏，查看密钥信息与额度。</p></div></aside></div>
+      <footer class="workspace-footer"><span><span class="status-dot"></span> 本机加密 · 手动查询为默认</span><span>实验版，未经独立安全审计</span></footer>
+    </main>
+  </div>
+
+  <dialog id="entry-dialog" class="modal"><form id="entry-form"><div class="modal-heading"><div><span class="eyebrow">YOUR API COLLECTION</span><h2 id="entry-dialog-title">添加 API</h2></div><button class="icon-button close-dialog" type="button" aria-label="关闭添加窗口">×</button></div><p class="muted modal-intro">给它一个容易找到的名字。</p><div class="form-grid"><label class="field">名称<input id="entry-name" required maxlength="120" placeholder="例如：DeepSeek · 个人项目" autocomplete="off"></label><label class="field">服务商<select id="entry-provider" required></select></label></div><label class="field">API Key<input id="entry-secret" type="password" autocomplete="off" spellcheck="false" maxlength="8192" placeholder="粘贴你的 API Key"></label><p id="entry-secret-hint" class="field-hint">密钥默认隐藏，并加密保存在本机。</p><label class="field">Base URL <span class="optional">可选</span><input id="entry-url" type="url" autocomplete="off" spellcheck="false" maxlength="1000" placeholder="https://api.example.com/v1"></label><p class="field-hint">仅作收藏记录。额度查询只访问所选服务商的固定官方地址。</p><label class="field">标签 <span class="optional">可选，使用逗号分隔</span><input id="entry-tags" maxlength="400" autocomplete="off" placeholder="个人项目, 开发, 文本模型"></label><label class="field">用途与备注 <span class="optional">可选</span><textarea id="entry-notes" rows="3" maxlength="4000" placeholder="用在哪个工具、什么项目，或其他需要记住的信息"></textarea></label><p id="entry-error" class="error-message" role="alert" hidden></p><div class="modal-actions"><button type="button" class="button quiet close-dialog">取消</button><button id="entry-save" type="submit" class="button primary">保存收藏</button></div></form></dialog>
+
+  <dialog id="delete-dialog" class="modal compact"><form id="delete-form"><div class="modal-heading"><h2>删除这项收藏？</h2><button type="button" class="icon-button close-dialog" aria-label="关闭删除窗口">×</button></div><p id="delete-description" class="muted"></p><p class="field-hint">只删除本机记录，不会撤销服务商上的密钥。</p><p id="delete-error" class="error-message" role="alert" hidden></p><div class="modal-actions"><button type="button" class="button quiet close-dialog">取消</button><button id="delete-confirm" type="submit" class="button danger">删除收藏</button></div></form></dialog>
+
+  <dialog id="restore-dialog" class="modal compact"><form id="restore-form"><div class="modal-heading"><h2>恢复加密备份</h2><button type="button" class="icon-button close-dialog" aria-label="关闭恢复窗口">×</button></div><p class="muted">只支持恢复到空密钥库。恢复完成后，使用备份原来的主密码解锁。</p><label class="field">加密备份文件<input id="restore-file" type="file" accept=".json,application/json" required></label><label class="field">备份的主密码<input id="restore-password" type="password" autocomplete="off" required maxlength="1024"></label><p id="restore-error" class="error-message" role="alert" hidden></p><div class="modal-actions"><button type="button" class="button quiet close-dialog">取消</button><button id="restore-submit" type="submit" class="button primary">恢复备份</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

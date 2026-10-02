@@ -1,0 +1,58 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  native:
+    name: Native macOS
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build native application
+        run: swift build --package-path macos --configuration release
+      - name: Run core checks
+        run: bash macos/scripts/run-checks.sh
+      - name: Run isolated AppModel checks
+        run: bash macos/scripts/run-app-checks.sh
+      - name: Run biometric filesystem checks without hardware access
+        run: bash macos/scripts/run-biometric-checks.sh --file-only
+
+  node:
+    name: Node.js ${{ matrix.node }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      # The prototype uses only Node built-ins: no install or lockfile is needed.
+      - name: Run web prototype tests
+        run: npm test

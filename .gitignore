@@ -1,0 +1,32 @@
+# Local secrets and vaults (never publish even when encrypted)
+.data/
+.env
+.env.*
+!.env.example
+*.vault.json
+*.vault-backup.json
+*.keynest
+*.keynestlocal
+instance.lock
+*.pem
+*.p12
+*.pfx
+*.key
+
+# Dependencies, build output, local app copies and backups
+node_modules/
+runtime/
+.build/
+.swiftpm/
+dist/
+*.app/
+*.dmg
+*.zip
+*.log
+.DS_Store
+
+# Local assistant/editor configuration
+.codex/
+.agents/
+.idea/
+.vscode/
