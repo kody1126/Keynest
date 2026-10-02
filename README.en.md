@@ -6,14 +6,14 @@
 <p align="center">Local encryption · Touch ID · Find a provider, copy a key</p>
 
 <p align="center">
-  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.8.1"><img src="https://img.shields.io/badge/preview-v0.8.1-5b9bd5" alt="Preview v0.8.1"></a>
+  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.8.2"><img src="https://img.shields.io/badge/preview-v0.8.2-5b9bd5" alt="Preview v0.8.2"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-333333" alt="macOS 14 or later">
   <a href="https://github.com/kody1126/Keynest/actions/workflows/checks.yml"><img src="https://github.com/kody1126/Keynest/actions/workflows/checks.yml/badge.svg?branch=main" alt="Build and tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-MIT-38956e" alt="Code license: MIT"></a>
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.8.1/Keynest-0.8.1-arm64.dmg">Download for macOS</a></strong>
+  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.8.2/Keynest-0.8.2-arm64.dmg">Download for macOS</a></strong>
   · <a href="README.md">简体中文</a>
   · <a href="docs/guide.en.md">User guide</a>
   · <a href="https://github.com/kody1126/Keynest/issues">Report an issue</a>
@@ -30,7 +30,7 @@
 
 One model provider can mean several keys. One Agent can need access to search, a browser, and a database. Keynest keeps these credentials in one local vault: save them once, then find the provider on Home and copy the key you need.
 
-- **Ready when you open it** — Home groups keys by provider, with search and favorites. No need to open an editor just to copy a key.
+- **Ready when you open it** — Home cards fit their content in a compact layout, with search at the top right and a favorites filter. No need to open an editor just to copy a key.
 - **Multiple keys, easy to tell apart** — Account labels, environments, and API addresses distinguish personal, team, development, and production use.
 - **Choose a provider, paste your key** — 61 built-in presets cover OpenAI, Claude, Gemini, DeepSeek, Cloudflare, GitHub, and more, with brand icons and official API links.
 - **Organize keys by tool** — 25 tool and Skill templates cover Cursor, Cline, Dify, n8n, and more. The same key can be linked to several tools.
@@ -50,7 +50,7 @@ Reuse existing keys for a tool or add the ones it needs. Keynest organizes crede
 
 ## Download and get started
 
-**[Download Keynest 0.8.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.8.1/Keynest-0.8.1-arm64.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.8.1)
+**[Download Keynest 0.8.2 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.8.2/Keynest-0.8.2-arm64.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.8.2)
 
 Requires **macOS 14 or later**. A package is available for Apple Silicon. You can try building from source on an Intel Mac, but that configuration has not been verified.
 

@@ -4,7 +4,7 @@
 
 A native macOS app for collecting and managing API keys. Unlock your vault, find a provider on Home, and copy the key you need. Account labels, environments, and API hosts help distinguish multiple keys from the same provider. You can also organize keys by the tools that use them, and share one key across multiple tools.
 
-The current release is **0.8.1, a security update to the experimental native Mac app**. It uses SwiftUI and AppKit, with no Node.js, browser, or cloud account required. The distributed build targets Apple Silicon Macs running macOS 14 or later. The app currently has a Chinese interface.
+The current release is **0.8.2**. Home has a more compact card layout and keeps search at the top right. This experimental native Mac app retains the security fixes from 0.8.1 and uses SwiftUI and AppKit, with no Node.js, browser, or cloud account required. The distributed build targets Apple Silicon Macs running macOS 14 or later. The app currently has a Chinese interface.
 
 ## Open the app
 
@@ -14,7 +14,7 @@ Download a macOS package from [GitHub Releases](https://github.com/kody1126/Keyn
 open "$HOME/Applications/Keynest.app"
 ```
 
-The current disk image is `Keynest-0.8.1-arm64.dmg` ([download v0.8.1](https://github.com/kody1126/Keynest/releases/tag/v0.8.1)). It contains both `Keynest.app` and the separate `Keynest Demo.app`. Install both into `~/Applications` before opening them. The apps use local ad-hoc signatures; they are not signed with an Apple Developer ID or notarized by Apple.
+The current disk image is `Keynest-0.8.2-arm64.dmg` ([download v0.8.2](https://github.com/kody1126/Keynest/releases/tag/v0.8.2)). It contains both `Keynest.app` and the separate `Keynest Demo.app`. Install both into `~/Applications` before opening them. The apps use local ad-hoc signatures; they are not signed with an Apple Developer ID or notarized by Apple.
 
 On first launch, set a master password of at least **12 characters**. On Home, choose a provider, paste your key, and select **Save to Home (保存到首页)**. Presets fill in the name and a common API address; project-specific addresses must be entered as indicated. Expand the optional fields to add an account label or environment. **Full Editor… (完整编辑…)** also lets you add tags, notes, and tool associations. Subsequent unlocks open Home by default. There is no master-password recovery.
 
@@ -30,8 +30,9 @@ Demo data is stored separately from the regular vault in `~/Library/Application 
 
 ## Everyday use
 
-- **Copy from Home:** Provider cards have a separate Copy button for each key. A card shows up to two keys directly; use **View All (查看全部)** to explicitly choose from additional keys. Account labels, environments, and API hostnames help distinguish personal accounts, team accounts, and custom gateways.
-- **Home filters and search:** Filter by **All / Models / Skills & Services / Favorites (全部 / 模型 / Skill 与服务 / 常用)**. Home searches provider names and aliases, key names, account labels, environments, tags, and associated tool names. It does not search secrets, URLs, or notes. The management view retains broader metadata search, including URLs and notes.
+- **Copy from Home:** Provider cards fit their content in a compact layout, reducing empty space between cards. Each key has its own Copy button. A card still shows up to two keys directly; use **View All (查看全部)** to explicitly choose from additional keys. Account labels, environments, and API hostnames help distinguish personal accounts, team accounts, and custom gateways.
+- **Home filters and search:** Search stays at the top right, alongside the compact header. Filter by **All / Models / Skills & Services / Favorites (全部 / 模型 / Skill 与服务 / 常用)**. Home searches provider names and aliases, key names, account labels, environments, tags, and associated tool names. It does not search secrets, URLs, or notes. The management view retains broader metadata search, including URLs and notes.
+- **Large catalogs:** Home initially shows up to 80 matching providers. Use **Show more providers (显示更多平台)** below the cards to expand the list. Search always covers the full vault; changing the query or scope returns to the top of the results.
 - **Quick Add:** Choose a provider on Home and paste a key. If you already have keys for that provider, optional fields expand automatically and the default name receives a distinct number, making it easier to add an account label or purpose. The full editor remains available. You can also add another key from the bottom of a provider card.
 - **25 tool templates:** Templates cover Cursor, Cline, OpenClaw, Dify, n8n, LangGraph, and others, plus Skills for search, crawling, browsers, Cloudflare, GitHub, Notion, email, maps, and weather. Choose a tool, reuse existing keys or enter new ones, and save all associations together. Optional capabilities are disabled by default.
 - **Organize by tool:** The management view includes All Keys, Favorites, Ungrouped, My Tools, and categories. A tool can use multiple keys, and a key can belong to multiple tools. Removing a tool removes its associations without deleting the keys.
@@ -75,7 +76,7 @@ Names, keys, tags, notes, and quota snapshots are encrypted together with **AES-
 
 Touch ID protects access to the vault through Secure Enclave access control tied to the currently enrolled fingerprints. Only a hardware-bound private-key representation and encrypted, wrapped unlock material are stored locally; failed authentication cannot decrypt the vault. See the [Touch ID implementation and verification notes](../research/touch-id-0.6.md).
 
-Version 0.8.1 retains payload version 3 from 0.7 and can read versions 1 and 2. The demo catalog revision remains 7. This update does not change the encryption format or repopulate demo data. The upgrade protection introduced in 0.7 still applies: before the first save of an older format, Keynest preserves the original encrypted bytes as `vault-before-0.7.keynest` in the same directory. Existing 0.5 upgrade backups are also retained. Versions 0.6 and earlier cannot read payload version 3; downgrading requires a pre-upgrade backup and the password used at that time. See [upgrades and compatibility](../macos/README.md#升级与兼容性).
+Version 0.8.2 retains payload version 3 from 0.7 and can read versions 1 and 2. The demo catalog revision remains 7. This update does not change the encryption format or repopulate demo data. The upgrade protection introduced in 0.7 still applies: before the first save of an older format, Keynest preserves the original encrypted bytes as `vault-before-0.7.keynest` in the same directory. Existing 0.5 upgrade backups are also retained. Versions 0.6 and earlier cannot read payload version 3; downgrading requires a pre-upgrade backup and the password used at that time. See [upgrades and compatibility](../macos/README.md#升级与兼容性).
 
 Version 0.8.1 fixes imports committing after cancellation, clipboard ownership races, hard-link file permission handling, malformed URLs, a crash involving certain slices of unlock data, and inconsistencies between in-memory state and encrypted files after disk synchronization failures. Inactivity locking now uses a monotonic clock, and both apps enable Hardened Runtime. Existing passwords remain usable; newly created or changed passwords also have a maximum UTF-8 size of 16 KiB. See the [security review and fixes](../research/security-review-0.8.1.md).
 
@@ -120,7 +121,7 @@ zsh scripts/install-apps.sh
 
 Intermediate app bundles live only in `macos/dist/apps.noindex/`. Do not run them directly from the build directory or disk image. The installer places both apps in `~/Applications`. Before replacing an app, it checks its identity and signature, archives the old app in a verified ZIP under `.build/app-backups/`, and attempts rollback if installation fails. Installation does not launch either app, access a vault, or change system indexing settings.
 
-The packaging script builds both apps, creates the DMG, verifies the disk image, and writes a SHA-256 checksum file. The [verification record](../macos/verification.md) is the reference for the scope of the 0.8.1 checks, builds, and hands-on app verification.
+The packaging script builds both apps, creates the DMG, verifies the disk image, and writes a SHA-256 checksum file. The [verification record](../macos/verification.md) is the reference for completed checks, builds, and hands-on app verification for each release.
 
 ## Archived web experiment
 

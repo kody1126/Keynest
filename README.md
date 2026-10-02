@@ -6,14 +6,14 @@
 <p align="center">本地加密保存 · Touch ID 解锁 · 找到平台，直接复制</p>
 
 <p align="center">
-  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.8.1"><img src="https://img.shields.io/badge/preview-v0.8.1-5b9bd5" alt="预览版 v0.8.1"></a>
+  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.8.2"><img src="https://img.shields.io/badge/preview-v0.8.2-5b9bd5" alt="预览版 v0.8.2"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-333333" alt="macOS 14 或更新版本">
   <a href="https://github.com/kody1126/Keynest/actions/workflows/checks.yml"><img src="https://github.com/kody1126/Keynest/actions/workflows/checks.yml/badge.svg?branch=main" alt="构建与测试"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-MIT-38956e" alt="代码许可证 MIT"></a>
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.8.1/Keynest-0.8.1-arm64.dmg">下载 macOS 版</a></strong>
+  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.8.2/Keynest-0.8.2-arm64.dmg">下载 macOS 版</a></strong>
   · <a href="README.en.md">English</a>
   · <a href="macos/README.md">使用文档</a>
   · <a href="https://github.com/kody1126/Keynest/issues">反馈问题</a>
@@ -30,7 +30,7 @@
 
 一个模型平台有几把 Key，一个 Agent 又要连接搜索、浏览器和数据库。Keynest 把这些凭据放在同一个本地密钥库里：保存一次，下次用的时候打开首页，找到平台，复制需要的那一把。
 
-- **打开就能取用** — 首页按平台展示密钥，支持搜索和常用收藏，无需先进入编辑表单。
+- **打开就能取用** — 首页卡片按内容高度紧凑排列，右上角搜索，支持常用筛选；无需先进入编辑表单。
 - **多把密钥，也分得清** — 用账号、环境和 API 地址区分个人、团队、开发与正式用途。
 - **常见平台，选好再粘贴** — 内置 61 个服务商预设，覆盖 OpenAI、Claude、Gemini、DeepSeek、Cloudflare、GitHub 等，附品牌图标和官方 API 入口。
 - **按工具整理一组密钥** — 25 个工具与 Skill 模板，覆盖 Cursor、Cline、Dify、n8n 等；一把密钥可供多个工具关联使用。
@@ -50,7 +50,7 @@
 
 ## 下载与开始使用
 
-**[下载 Keynest 0.8.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.8.1/Keynest-0.8.1-arm64.dmg)** · [发布说明与 SHA-256 校验文件](https://github.com/kody1126/Keynest/releases/tag/v0.8.1)
+**[下载 Keynest 0.8.2 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.8.2/Keynest-0.8.2-arm64.dmg)** · [发布说明与 SHA-256 校验文件](https://github.com/kody1126/Keynest/releases/tag/v0.8.2)
 
 需要 **macOS 14 或更新版本**。当前提供 Apple Silicon 安装包；Intel Mac 可尝试从源码构建，但尚未验证。
 

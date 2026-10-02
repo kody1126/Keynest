@@ -117,7 +117,7 @@ private struct SettingsView: View {
                 }
             }
             Section {
-                Text("Keynest 0.8.1 · 本地实验版\n仅在你点击额度查询时访问对应平台的官方接口。尚未经过独立安全审计。").font(.footnote).foregroundStyle(.secondary)
+                Text("Keynest 0.8.2 · 本地实验版\n仅在你点击额度查询时访问对应平台的官方接口。尚未经过独立安全审计。").font(.footnote).foregroundStyle(.secondary)
             }
         }.formStyle(.grouped).padding(12).frame(width: 520, height: 510)
             .task { await model.refreshBiometricStatus() }
