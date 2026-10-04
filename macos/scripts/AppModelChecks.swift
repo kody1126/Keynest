@@ -1,6 +1,7 @@
 import Foundation
 import Darwin
 import AppKit
+import CryptoKit
 
 /// Records publications in memory. Never touches NSPasteboard.general or an
 /// actual clipboard service, so no user content is read or overwritten.
@@ -87,6 +88,21 @@ private final class AppChecks {
         return model.entries.first { $0.id == id }!
     }
 
+    private func versionThreeFixture(password: String, entries: [SecretEntry] = []) throws -> Data {
+        let session = try VaultCodec.createSession(password: password)
+        var payload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(VaultDocument(entries: entries))) as! [String: Any]
+        payload["version"] = 3
+        var envelope = try JSONSerialization.jsonObject(with: VaultCodec.encrypt(VaultDocument(), session: session)) as! [String: Any]
+        let nonce = AES.GCM.Nonce()
+        let header = Data("Keynest|format=keynest-vault|version=1|cipher=aes-256-gcm|kdf=pbkdf2-sha256|iterations=600000|salt=\(session.salt.base64EncodedString())".utf8)
+        let box = try AES.GCM.seal(JSONSerialization.data(withJSONObject: payload), using: session.key,
+                                   nonce: nonce, authenticating: header)
+        envelope["nonce"] = Data(nonce).base64EncodedString()
+        envelope["ciphertext"] = box.ciphertext.base64EncodedString()
+        envelope["tag"] = box.tag.base64EncodedString()
+        return try JSONSerialization.data(withJSONObject: envelope)
+    }
+
     func run() async throws {
         // Refuse to initialize AppModel until a fresh, explicitly supplied
         // /private/tmp vault is proven. Never permit its default data directory.
@@ -135,6 +151,57 @@ private final class AppChecks {
         try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all,
                    "Creating a vault must keep Home as the default without a selected credential")
 
+        // Only this proven temporary empty vault receives a historical fixture.
+        try expect(model.keychainConfiguration == nil, "A new vault uses automatic keychain defaults")
+        model.lock()
+        let legacyBytes = try versionThreeFixture(password: password)
+        try VaultStorage(directory: directory).write(legacyBytes)
+        await model.unlock(password: password)
+        try expect(!model.isLocked && model.keychainConfiguration == nil && model.entries.isEmpty,
+                   "Payload three unlock must not invent a custom configuration or credentials")
+        let keychain = KeychainConfiguration(charms: [
+            .init(providerID: "openai", color: .rose),
+            .init(customGroupID: "custom:private fixture keychain", color: .graphite)
+        ])
+        try model.saveKeychainConfiguration(keychain)
+        try expect(model.keychainConfiguration == keychain, "Configuration becomes visible after the encrypted save")
+        let upgradeBackup = directory.appendingPathComponent("vault-before-0.10.keynest")
+        try expect(try Data(contentsOf: upgradeBackup) == legacyBytes,
+                   "First payload-four save must preserve the original encrypted payload-three bytes")
+        let savedConfigurationBytes = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
+        let savedConfiguration = try VaultCodec.decrypt(savedConfigurationBytes, password: password)
+        try expect(savedConfiguration.sourceVersion == 4 && !savedConfiguration.requiresUpgrade &&
+                   savedConfiguration.document.keychainConfiguration == keychain,
+                   "The configuration must round-trip in payload four")
+        try expect(!String(decoding: savedConfigurationBytes, as: UTF8.self).contains("private fixture keychain"),
+                   "Private custom group identifiers must not appear outside encryption")
+        let failedConfiguration = KeychainConfiguration(charms: [.init(providerID: "anthropic", color: .amber)])
+        let hardLink = directory.appendingPathComponent("fake-configuration-write-blocker")
+        try FileManager.default.linkItem(at: directory.appendingPathComponent("vault.keynest"), to: hardLink)
+        do {
+            try model.saveKeychainConfiguration(failedConfiguration)
+            throw AppCheckFailure(description: "Saving over a hard-linked fixture unexpectedly succeeded")
+        } catch is VaultError { }
+        try expect(model.keychainConfiguration == keychain &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == savedConfigurationBytes,
+                   "A pre-commit storage failure must preserve both configuration memory and ciphertext")
+        try FileManager.default.removeItem(at: hardLink)
+        do {
+            try model.saveKeychainConfiguration(.init(charms: [.init(providerID: "openai"), .init(providerID: "openai")]))
+            throw AppCheckFailure(description: "Duplicate charm targets were saved")
+        } catch is VaultError { }
+        try expect(model.keychainConfiguration == keychain &&
+                   (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == savedConfigurationBytes,
+                   "Invalid configuration must leave memory and the encrypted file unchanged")
+        try model.saveKeychainConfiguration(.init())
+        model.lock(); await model.unlock(password: password)
+        try expect(model.keychainConfiguration?.charms == [], "Intentional empty selection must survive lock and unlock")
+        try model.saveKeychainConfiguration(nil)
+        model.lock(); await model.unlock(password: password)
+        try expect(model.keychainConfiguration == nil, "Restoring automatic defaults must survive lock and unlock")
+        try model.saveKeychainConfiguration(keychain)
+        try expect(try Data(contentsOf: upgradeBackup) == legacyBytes, "Later saves must not overwrite the upgrade backup")
+
         let orbit = ToolGroup(name: "Orbit Lab", notes: "Fictional test tool")
         let notebook = ToolGroup(name: "Notebook Bench", notes: "Fictional test tool")
         try model.saveTool(orbit)
@@ -151,6 +218,7 @@ private final class AppChecks {
         try model.save(shared)
         try model.save(production)
         try expect(model.entries.count == 2 && model.tools.count == 2, "Saving entries must preserve tool records")
+        try expect(model.keychainConfiguration == keychain, "Saving credentials and tools must retain keychain choices")
         try expect(Set(try entry(shared.id, in: model).toolIDs) == [orbit.id, notebook.id],
                    "One shared entry must refer to both tools")
 
@@ -220,6 +288,7 @@ private final class AppChecks {
         try expect(model.entries.allSatisfy { $0.toolIDs == [notebook.id] },
                    "Removing a tool must remove only its own associations")
         try expect(model.filter == .all, "Removing the selected tool must return to an existing filter")
+        try expect(model.keychainConfiguration == keychain, "Edits, favorites, links and tool removal must preserve keychain configuration")
 
         model.addTool()
         try expect(model.presentingToolSetup && !model.presentingToolEditor,
@@ -243,6 +312,7 @@ private final class AppChecks {
         ])
         try expect(model.entries.count == 3 && model.entries.first { $0.id == templateKey.id }!.toolIDs.count == 2,
                    "Reusing a credential must associate the same entity without duplicating its secret")
+        try expect(model.keychainConfiguration == keychain, "Template creation must retain keychain configuration")
         let beforeFailure = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
         let toolsBeforeFailure = model.tools
         do {
@@ -372,6 +442,7 @@ private final class AppChecks {
         model.presentingHomeProviderPicker = true
         model.lock()
         try expect(model.isLocked && model.entries.isEmpty && model.tools.isEmpty, "Lock must clear decrypted entries and tools")
+        try expect(model.keychainConfiguration == nil, "Lock must clear decrypted custom platform identifiers and choices")
         try expect(!model.presentingToolSetup && !model.presentingToolEditor && model.editingTool == nil, "Lock must close and clear the tool editor")
         try expect(!model.presentingToolLinks && model.linkingTool == nil, "Lock must close and clear the association sheet")
         try expect(!model.presentingEditor && model.editingEntry == nil, "Lock must close and clear the credential editor")
@@ -382,6 +453,11 @@ private final class AppChecks {
         try expect(!model.presentingHomeProviderPicker && model.quickAddPreset == nil && model.copyFeedback == nil,
                    "Lock must close quick add and the provider picker and clear copy feedback")
         let lockedFile = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
+        do {
+            try model.saveKeychainConfiguration(keychain)
+            throw AppCheckFailure(description: "Locked configuration save unexpectedly succeeded")
+        } catch is AppError { }
+        try expect(model.keychainConfiguration == nil, "A rejected locked save must not publish decrypted configuration")
         model.addNew(); model.quickAdd(homePreset); model.openAdvancedEntry(homeDraft)
         model.addCustomCredential(); model.showEntry(savedEntries[0])
         try expect(model.isLocked && model.filter == .home && model.selectedID == nil &&
@@ -394,6 +470,7 @@ private final class AppChecks {
         try expect(model.errorMessage == nil && !model.isLocked, "The same isolated vault must unlock")
         try expect(model.entries == savedEntries, "Unlock must recover saved credentials and their associations exactly")
         try expect(model.tools == savedTools, "Unlock must recover saved tool records exactly")
+        try expect(model.keychainConfiguration == keychain, "Password unlock must recover the encrypted keychain choices")
         try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all &&
                    model.searchText.isEmpty && model.environmentFilter == nil,
                    "Password unlock must open Home with no implicitly selected credential")
@@ -406,6 +483,7 @@ private final class AppChecks {
         await model.unlockWithBiometrics()
         try expect(!model.isLocked && model.entries == savedEntries && model.tools == savedTools,
                    "Authenticated token must decrypt exactly the same vault")
+        try expect(model.keychainConfiguration == keychain, "Biometric token decrypt must retain configuration without hardware access")
         try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all &&
                    model.searchText.isEmpty && model.environmentFilter == nil,
                    "Biometric unlock must open Home with no implicitly selected credential")
@@ -447,6 +525,7 @@ private final class AppChecks {
         model.lock()
         await model.unlock(password: replacementPassword)
         try expect(!model.isLocked && model.entries == savedEntries, "New password must preserve all saved credentials")
+        try expect(model.keychainConfiguration == keychain, "Password replacement must retain encrypted keychain choices")
         try expect(model.filter == .home && model.selectedID == nil,
                    "Unlock after changing the password must still default to Home without selection")
         await model.enableBiometrics()
@@ -456,7 +535,8 @@ private final class AppChecks {
         // A cancelled decrypt must not merge records after its sheet disappears.
         let importPassword = "Fake-Import-Checks-2026"
         let imported = SecretEntry(name: "Cancelled import fixture", secret: "fake-only-import-must-not-leak")
-        let incoming = try VaultCodec.encrypt(VaultDocument(entries: [imported]),
+        let importedConfiguration = KeychainConfiguration(charms: [.init(providerID: "anthropic", color: .lavender)])
+        let incoming = try VaultCodec.encrypt(VaultDocument(entries: [imported], keychainConfiguration: importedConfiguration),
                                              session: VaultCodec.createSession(password: importPassword))
         let beforeImportEntries = model.entries
         let beforeImportBytes = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
@@ -478,6 +558,14 @@ private final class AppChecks {
         await model.restore(password: importPassword)
         try expect(model.entries.contains { $0.id == imported.id } && !model.presentingRestore,
                    "A new non-cancelled import must still merge and close successfully")
+        try expect(model.keychainConfiguration == keychain, "Merging a backup must retain a local explicit keychain choice")
+        try model.saveKeychainConfiguration(.init())
+        try model.stageImport(incoming); await model.restore(password: importPassword)
+        try expect(model.keychainConfiguration?.charms == [], "Backup merge must not override intentional empty keychain selection")
+        try model.saveKeychainConfiguration(nil)
+        try model.stageImport(incoming); await model.restore(password: importPassword)
+        try expect(model.keychainConfiguration == importedConfiguration, "Without a local override, backup merge adopts the imported choices")
+        try model.saveKeychainConfiguration(keychain)
 
         // Publish one complete, local-only item, using the current record by ID.
         var stale = imported; stale.secret = "stale-do-not-copy"
@@ -534,7 +622,7 @@ private final class AppChecks {
                    "A committed write with uncertain directory durability must update memory and warn")
         let committed = try VaultCodec.decrypt(Data(contentsOf: directory.appendingPathComponent("vault.keynest")),
                                               password: replacementPassword).document
-        try expect(committed.entries == model.entries && committed.tools == model.tools,
+        try expect(committed.entries == model.entries && committed.tools == model.tools && committed.keychainConfiguration == keychain,
                    "A post-rename sync failure must not leave disk and memory diverged")
         model.errorMessage = nil
         let faultPassword = "Keynest-Sync-Fault-Password-2026"
@@ -546,6 +634,78 @@ private final class AppChecks {
         await model.unlock(password: faultPassword)
         try expect(!model.isLocked && model.entries.first(where: { $0.id == imported.id })?.name == durableFixture.name,
                    "The new password must unlock committed data after a post-rename directory sync failure")
+        try expect(model.keychainConfiguration == keychain, "Durability-warning saves and rekey must retain keychain choices")
+
+        // A password change can be the first write after a format upgrade.
+        // Replace only this already-proven temporary fixture, with no preceding
+        // configuration save that could hide a missing rekey backup guard.
+        model.lock()
+        try expect(try Data(contentsOf: upgradeBackup) == legacyBytes,
+                   "Only the known temporary upgrade fixture may be reset for the rekey checks")
+        try FileManager.default.removeItem(at: upgradeBackup)
+        let legacyRekeyPassword = "Keynest-Legacy-Rekey-Old-2026"
+        let nextRekeyPassword = "Keynest-Legacy-Rekey-New-2026"
+        let legacyRekeyEntry = SecretEntry(name: "Legacy password upgrade fixture", provider: "OpenAI",
+                                          secret: "demo-only-not-a-real-key-password-upgrade")
+        let legacyRekeyBytes = try versionThreeFixture(password: legacyRekeyPassword, entries: [legacyRekeyEntry])
+        let rekeyStorage = try VaultStorage(directory: directory)
+        try rekeyStorage.write(legacyRekeyBytes)
+        await model.unlock(password: legacyRekeyPassword)
+        try expect(!model.isLocked && model.entries == [legacyRekeyEntry],
+                   "The legacy rekey fixture must unlock before any upgraded save")
+        await model.enableBiometrics()
+        let originalRekeyToken = biometric.token
+        try expect(model.biometricEnabled && originalRekeyToken != nil,
+                   "The rekey failure fixture uses an in-memory biometric stand-in")
+
+        // A directory at the reserved backup filename deterministically refuses
+        // preservation without relying on user permissions or real storage.
+        try FileManager.default.createDirectory(at: upgradeBackup, withIntermediateDirectories: false)
+        model.presentingPasswordChange = true
+        await model.replacePassword(old: legacyRekeyPassword, new: nextRekeyPassword)
+        try expect(model.errorMessage != nil && !model.isLocked && !model.busy && model.presentingPasswordChange,
+                   "Failed upgrade preservation must keep the unlocked password form available for retry")
+        try expect(try rekeyStorage.read() == legacyRekeyBytes,
+                   "A password change must not replace legacy ciphertext when its upgrade backup fails")
+        try expect(model.entries == [legacyRekeyEntry] && model.keychainConfiguration == nil,
+                   "Failed legacy rekey must preserve the in-memory document")
+        try expect(biometric.token == originalRekeyToken && model.biometricEnabled,
+                   "A rejected upgrade backup must fail before revoking the old biometric token")
+
+        // Re-enrollment exposes a fake token generated from the *current*
+        // in-memory session, so this detects an accidental early session switch.
+        await model.enableBiometrics()
+        guard let unchangedSessionToken = biometric.token else {
+            throw AppCheckFailure(description: "The failed-rekey session token is missing")
+        }
+        let unchangedSession = try VaultCodec.decrypt(legacyRekeyBytes, biometricUnlockData: unchangedSessionToken)
+        try expect(unchangedSession.sourceVersion == 3 && unchangedSession.document.entries == [legacyRekeyEntry],
+                   "A failed first-write rekey must keep the session capable of decrypting the original vault")
+
+        try FileManager.default.removeItem(at: upgradeBackup)
+        model.errorMessage = nil
+        await model.replacePassword(old: legacyRekeyPassword, new: nextRekeyPassword)
+        try expect(model.errorMessage == nil && !model.isLocked && !model.presentingPasswordChange,
+                   "Retrying the first legacy write as a password change must complete after backup recovery")
+        let preservedRekeyBytes = try Data(contentsOf: upgradeBackup)
+        try expect(preservedRekeyBytes == legacyRekeyBytes,
+                   "First-write rekey must preserve the exact original ciphertext, before changing its password")
+        let preservedRekey = try VaultCodec.decrypt(preservedRekeyBytes, password: legacyRekeyPassword)
+        try expect(preservedRekey.sourceVersion == 3 && preservedRekey.document.entries == [legacyRekeyEntry],
+                   "The upgrade backup must retain both its old payload and original password")
+        let upgradedRekey = try VaultCodec.decrypt(rekeyStorage.read(), password: nextRekeyPassword)
+        try expect(upgradedRekey.sourceVersion == 4 && !upgradedRekey.requiresUpgrade &&
+                   upgradedRekey.document.entries == [legacyRekeyEntry],
+                   "The new password must decrypt the upgraded document without losing legacy records")
+        try expect(biometric.token == nil && !model.biometricEnabled,
+                   "A successful first-write rekey must revoke the previous biometric token")
+        model.lock()
+        await model.unlock(password: nextRekeyPassword)
+        try expect(!model.isLocked && model.entries == [legacyRekeyEntry],
+                   "The first-write replacement password must survive a lock and fresh unlock")
+        try model.saveKeychainConfiguration(.init())
+        try expect(try Data(contentsOf: upgradeBackup) == legacyRekeyBytes,
+                   "Subsequent saves must not replace the original legacy-rekey backup")
     }
 }
 

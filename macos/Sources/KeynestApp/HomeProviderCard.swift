@@ -126,7 +126,7 @@ struct HomeProviderCard: View {
     }
 }
 
-private struct HomeCredentialRow: View {
+struct HomeCredentialRow: View {
     @EnvironmentObject private var model: AppModel
     let entry: SecretEntry
 

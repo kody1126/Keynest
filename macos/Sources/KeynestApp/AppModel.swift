@@ -12,6 +12,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
     let isDemo = Bundle.main.bundleIdentifier == "local.keynest.demo"
     @Published var entries: [SecretEntry] = []
     @Published var tools: [ToolGroup] = []
+    @Published private(set) var keychainConfiguration: KeychainConfiguration?
     @Published var environmentFilter: String?
     @Published var presentingToolEditor = false
     @Published var presentingToolSetup = false
@@ -290,11 +291,15 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
 
     private func acceptUnlocked(_ result: (document: VaultDocument, session: VaultSession, requiresUpgrade: Bool, sourceVersion: Int)) throws {
         session = result.session; entries = result.document.entries; tools = result.document.tools
+        keychainConfiguration = result.document.keychainConfiguration
         needsUpgradeBackup = result.requiresUpgrade
         isLocked = false; lastActivity = monotonicNow(); biometricMessage = nil
         if isDemo {
             let savedRevision = UserDefaults.standard.integer(forKey: "KeynestDemoCatalogRevision")
-            let revision = result.sourceVersion == 1 ? 4 : (savedRevision > 0 ? savedRevision : 5)
+            // Payload 3 shipped with catalog 7. A missing preference must not
+            // re-add samples deleted from that already upgraded demo library.
+            let inferredRevision = result.sourceVersion >= 3 ? DemoVault.catalogRevision : 5
+            let revision = result.sourceVersion == 1 ? 4 : (savedRevision > 0 ? savedRevision : inferredRevision)
             if revision < DemoVault.catalogRevision {
                 let enriched = try DemoVault.upgradingCatalog(result.document, fromRevision: revision)
                 try persist(enriched.entries, tools: enriched.tools)
@@ -317,7 +322,8 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
             guard epoch == generation else { return }
             guard !storage.exists else { throw AppError("密钥库已经存在，未覆盖现有文件。") }
             try writeCommitted(data, to: storage)
-            session = newSession; entries = []; tools = []; needsUpgradeBackup = false; isInitialized = true; isLocked = false; lastActivity = monotonicNow()
+            session = newSession; entries = []; tools = []; keychainConfiguration = nil
+            needsUpgradeBackup = false; isInitialized = true; isLocked = false; lastActivity = monotonicNow()
             await refreshBiometricStatus()
         } catch { if generation == epoch { report(error) } }
     }
@@ -335,7 +341,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
     func lock() {
         biometricAccess?.cancel(); automaticBiometricAttemptPending = false; biometricMessage = nil
         for task in quotaTasks.values { task.cancel() }; quotaTasks.removeAll()
-        epoch = UUID(); session = nil; entries = []; tools = []; selectedID = nil; searchText = ""
+        epoch = UUID(); session = nil; entries = []; tools = []; keychainConfiguration = nil; selectedID = nil; searchText = ""
         filter = .home; homeScope = .all; environmentFilter = nil; needsUpgradeBackup = false
         presentingHomeProviderPicker = false; quickAddPreset = nil
         copyFeedback = nil; copyFeedbackGeneration = UUID()
@@ -346,13 +352,30 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
         clipboard.clearOwnedContents()
     }
     private func persist(_ newEntries: [SecretEntry], tools newTools: [ToolGroup]? = nil) throws {
+        try persist(VaultDocument(entries: newEntries, tools: newTools ?? tools,
+                                  keychainConfiguration: keychainConfiguration))
+    }
+    private var currentDocument: VaultDocument {
+        VaultDocument(entries: entries, tools: tools, keychainConfiguration: keychainConfiguration)
+    }
+    private func persist(_ document: VaultDocument) throws {
         try requireUnlocked()
         guard let session, let storage else { throw AppError("密钥库不可用。") }
-        let updatedTools = newTools ?? tools
-        let data = try VaultCodec.encrypt(VaultDocument(entries: newEntries, tools: updatedTools), session: session)
+        let data = try VaultCodec.encrypt(document, session: session)
         if needsUpgradeBackup { try storage.preserveUpgradeBackup(storage.read()) }
         try writeCommitted(data, to: storage)
-        needsUpgradeBackup = false; entries = newEntries; tools = updatedTools
+        needsUpgradeBackup = false; entries = document.entries; tools = document.tools
+        keychainConfiguration = document.keychainConfiguration
+    }
+    /// Nil restores automatic defaults; an empty charm array remains an explicit
+    /// user choice. Nothing is published until the encrypted replacement commits.
+    func saveKeychainConfiguration(_ configuration: KeychainConfiguration?) throws {
+        try requireUnlocked()
+        guard !busy else { throw AppError("当前正在处理密钥库，请稍后再保存钥匙串。") }
+        var document = currentDocument
+        document.keychainConfiguration = try configuration?.validated()
+        try persist(document)
+        notify("钥匙串已保存")
     }
     private func writeCommitted(_ data: Data, to storage: VaultStorage) throws {
         if try storage.write(data) == .durabilityUncertain {
@@ -420,7 +443,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
 
     func saveTemplate(_ template: ToolTemplate, name: String, selections: [ToolCredentialSelection]) throws {
         try requireUnlocked()
-        let result = try VaultDocument(entries: entries, tools: tools)
+        let result = try currentDocument
             .addingTool(templateID: template.id, name: name, selections: selections)
         try persist(result.document.entries, tools: result.document.tools)
         presentingToolSetup = false
@@ -444,7 +467,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
     }
     func removeTool(_ tool: ToolGroup) throws {
         try requireUnlocked()
-        let next = try VaultDocument(entries: entries, tools: tools).removingTool(id: tool.id)
+        let next = try currentDocument.removingTool(id: tool.id)
         try persist(next.entries, tools: next.tools)
         if filter == .tool(tool.id) { selectFilter(.all) }
         notify("已移除工具分组，密钥仍保留在全部密钥中")
@@ -581,15 +604,17 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
             guard generation == epoch, restoringImport == importGeneration else { return }
             if isInitialized {
                 try requireUnlocked()
-                let merged = try VaultDocument(entries: entries, tools: tools).merging(result.document)
-                try persist(merged.entries, tools: merged.tools)
+                let merged = try currentDocument.merging(result.document)
+                try persist(merged)
             } else {
                 guard !storage.exists else { throw AppError("密钥库已经存在，未覆盖现有文件。") }
                 try await biometricAccess?.remove()
                 guard generation == epoch, restoringImport == importGeneration else { return }
                 guard !storage.exists else { throw AppError("密钥库已经存在，未覆盖现有文件。") }
                 try writeCommitted(VaultCodec.encrypt(result.document, session: result.session), to: storage)
-                session = result.session; entries = result.document.entries; tools = result.document.tools; needsUpgradeBackup = false; isInitialized = true; isLocked = false; lastActivity = monotonicNow()
+                session = result.session; entries = result.document.entries; tools = result.document.tools
+                keychainConfiguration = result.document.keychainConfiguration
+                needsUpgradeBackup = false; isInitialized = true; isLocked = false; lastActivity = monotonicNow()
             }
             presentingRestore = false; pendingImport = nil; selectedID = filter == .home ? nil : filteredEntries.first?.id; notify("已导入加密备份")
             // Close the cancellable UI in the same actor turn as the commit.
@@ -617,7 +642,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
             try await biometricAccess?.remove()
             guard generation == epoch else { return }
             try requireUnlocked()
-            let updatedData = try VaultCodec.encrypt(VaultDocument(entries: entries, tools: tools), session: newSession)
+            let updatedData = try VaultCodec.encrypt(currentDocument, session: newSession)
             try writeCommitted(updatedData, to: storage)
             needsUpgradeBackup = false
             session = newSession; presentingPasswordChange = false

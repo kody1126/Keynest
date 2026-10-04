@@ -6,14 +6,14 @@
 <p align="center">Local encryption · Touch ID · Find a provider, copy a key</p>
 
 <p align="center">
-  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.9.0"><img src="https://img.shields.io/badge/preview-v0.9.0-5b9bd5" alt="Preview v0.9.0"></a>
+  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.10.0"><img src="https://img.shields.io/badge/preview-v0.10.0-5b9bd5" alt="Preview v0.10.0"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-333333" alt="macOS 14 or later">
   <a href="https://github.com/kody1126/Keynest/actions/workflows/checks.yml"><img src="https://github.com/kody1126/Keynest/actions/workflows/checks.yml/badge.svg?branch=main" alt="Build and tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-MIT-38956e" alt="Code license: MIT"></a>
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.9.0/Keynest-0.9.0-arm64.dmg">Download for macOS</a></strong>
+  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.10.0/Keynest-0.10.0-arm64.dmg">Download for macOS</a></strong>
   · <a href="README.md">简体中文</a>
   · <a href="docs/guide.en.md">User guide</a>
   · <a href="https://github.com/kody1126/Keynest/issues">Report an issue</a>
@@ -31,14 +31,15 @@
 One model provider can mean several keys. One Agent can need access to search, a browser, and a database. Keynest keeps these credentials in one local vault: save them once, then find the provider on Home and copy the key you need.
 
 - **Ready when you open it** — Home cards fit their content in a compact layout, with search at the top right and a favorites filter. No need to open an editor just to copy a key.
-- **An interactive keyring** — A large keyring in silver and ice blue on Home has multiple chains and OpenAI, Claude, and Gemini logo charms. Drag it and let it spring back, reset it, or collapse it. Your expanded or collapsed preference is remembered.
+- **Keep your APIs within reach** — A cropped metal arc holds staggered chains with individual enamel brand charms or glass keys in six colors, complementing the light interface. Click a charm to see every key for that provider, then choose the one to copy.
+- **Make the keyring yours** — Click the metal clasp or **Customize (定制)** to select and reorder 0–8 charms from 61 brands and your saved custom providers, or restore automatic selection. You can still drag, reset, or collapse it.
 - **Multiple keys, easy to tell apart** — Account labels, environments, and API addresses distinguish personal, team, development, and production use.
 - **Choose a provider, paste your key** — 61 built-in presets cover OpenAI, Claude, Gemini, DeepSeek, Cloudflare, GitHub, and more, with brand icons and official API links.
 - **Organize keys by tool** — 25 tool and Skill templates cover Cursor, Cline, Dify, n8n, and more. The same key can be linked to several tools.
 - **Unlock with Touch ID** — Supported Macs can use the system fingerprint prompt, with your master password always available as a fallback.
 - **Keep an encrypted backup** — Export your vault locally, or merge entries from a backup into an existing vault.
 
-The keyring is decorative. It renders locally, makes no network requests, and does not read or store keys. It respects the system's Reduce Motion setting.
+The keyring renders locally and receives only display information such as provider names, artwork, and colors; it does not hold secret values. Your selection and order are encrypted with the vault and included in encrypted backups. It respects Reduce Motion and Reduce Transparency.
 
 <details>
 <summary><strong>Explore the tool templates</strong></summary>
@@ -53,13 +54,13 @@ Reuse existing keys for a tool or add the ones it needs. Keynest organizes crede
 
 ## Download and get started
 
-**[Download Keynest 0.9.0 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.9.0/Keynest-0.9.0-arm64.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.9.0)
+**[Download Keynest 0.10.0 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.10.0/Keynest-0.10.0-arm64.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.10.0)
 
 Requires **macOS 14 or later**. A package is available for Apple Silicon. You can try building from source on an Intel Mac, but that configuration has not been verified.
 
 1. Open the DMG, copy `Keynest.app` to your personal `~/Applications` folder, and launch the installed app.
 2. Set a master password of at least 12 characters. Enable Touch ID if your Mac supports it.
-3. Choose a provider on Home, paste your API key, and save. Next time, copy it directly from the provider card.
+3. Choose a provider on Home, paste your API key, and save. Next time, find the key through its provider card or keyring charm and click **Copy (复制)**.
 
 > [!IMPORTANT]
 > This is a preview release with a local ad-hoc signature. It is not signed with an Apple Developer ID or notarized, so macOS may block the first launch. Download from this repository or build from source; see [Apple’s first-launch guidance](https://support.apple.com/en-us/102445). Your master password cannot be recovered; keep it safe and export encrypted backups regularly.
@@ -88,7 +89,7 @@ This project has not undergone an independent security audit. Encryption at rest
 
 ## Build from source
 
-The native app uses SwiftUI and AppKit, with SceneKit rendering the Home keyring locally. There are no third-party Swift Package dependencies. You need macOS and Apple's Command Line Tools; Node.js and a full Xcode installation are not required.
+The native app uses SwiftUI and AppKit, with SceneKit rendering the Home keyring locally. There are no third-party Swift Package dependencies. You need macOS and Apple's Command Line Tools; Node.js, a full Xcode installation, and Blender are not required. Blender is used only to regenerate the bundled [3D assets](macos/Resources/KeychainArt/README.md) during development.
 
 ```sh
 git clone https://github.com/kody1126/Keynest.git

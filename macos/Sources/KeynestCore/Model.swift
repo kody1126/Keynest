@@ -293,31 +293,37 @@ public struct SecretEntry: Identifiable, Codable, Equatable, Sendable {
 }
 
 public struct VaultDocument: Codable, Sendable {
-    public var version: Int = 3
+    public var version: Int = 4
     public var entries: [SecretEntry]
     public var tools: [ToolGroup]
+    public var keychainConfiguration: KeychainConfiguration?
 
-    public init(entries: [SecretEntry] = [], tools: [ToolGroup] = []) {
-        self.entries = entries; self.tools = tools
+    public init(entries: [SecretEntry] = [], tools: [ToolGroup] = [], keychainConfiguration: KeychainConfiguration? = nil) {
+        self.entries = entries; self.tools = tools; self.keychainConfiguration = keychainConfiguration
     }
 
-    private enum CodingKeys: String, CodingKey { case version, entries, tools }
+    private enum CodingKeys: String, CodingKey { case version, entries, tools, keychainConfiguration }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         version = try values.decode(Int.self, forKey: .version)
-        guard [1, 2, 3].contains(version) else { throw VaultError.invalidFormat }
+        guard [1, 2, 3, 4].contains(version) else { throw VaultError.invalidFormat }
         entries = try values.decode([SecretEntry].self, forKey: .entries)
         tools = try values.contains(.tools) ? values.decode([ToolGroup].self, forKey: .tools) : []
+        if values.contains(.keychainConfiguration) {
+            guard version == 4 else { throw VaultError.invalidFormat }
+            keychainConfiguration = try values.decode(KeychainConfiguration.self, forKey: .keychainConfiguration)
+        } else { keychainConfiguration = nil }
     }
 
     public func encode(to encoder: Encoder) throws {
-        guard [1, 2, 3].contains(version) else { throw VaultError.invalidFormat }
+        guard [1, 2, 3, 4].contains(version) else { throw VaultError.invalidFormat }
         var values = encoder.container(keyedBy: CodingKeys.self)
         // Every newly written payload advertises the fields older apps cannot retain.
-        try values.encode(3, forKey: .version)
+        try values.encode(4, forKey: .version)
         try values.encode(entries, forKey: .entries)
         try values.encode(tools, forKey: .tools)
+        try values.encodeIfPresent(keychainConfiguration, forKey: .keychainConfiguration)
     }
 
     public func merging(_ incoming: VaultDocument) throws -> VaultDocument {
@@ -341,6 +347,7 @@ public struct VaultDocument: Codable, Sendable {
 
         var mergedEntries = current.entries
         var entryLookup = Dictionary(uniqueKeysWithValues: mergedEntries.map { ($0.id, $0) })
+        var entryMapping: [UUID: UUID] = [:]
         for original in source.entries {
             var mapped = original
             mapped.toolIDs = try original.toolIDs.map { id in
@@ -353,11 +360,13 @@ public struct VaultDocument: Codable, Sendable {
                 entry.id = try Self.conflictID(mapped, kind: "entry", attempt: attempt)
                 attempt += 1
             }
+            entryMapping[original.id] = entry.id
             if entryLookup[entry.id] == nil {
                 mergedEntries.append(entry); entryLookup[entry.id] = entry
             }
         }
-        return try VaultDocument(entries: mergedEntries, tools: mergedTools).validated()
+        let configuration = current.keychainConfiguration ?? source.keychainConfiguration?.remappingEntries(entryMapping)
+        return try VaultDocument(entries: mergedEntries, tools: mergedTools, keychainConfiguration: configuration).validated()
     }
 
     /// Removes the group and its references, retaining every credential unchanged
@@ -369,11 +378,12 @@ public struct VaultDocument: Codable, Sendable {
             entry.toolIDs.removeAll { $0 == id }
             return entry
         }
-        return try VaultDocument(entries: remainingEntries, tools: current.tools.filter { $0.id != id }).validated()
+        return try VaultDocument(entries: remainingEntries, tools: current.tools.filter { $0.id != id },
+                                 keychainConfiguration: current.keychainConfiguration).validated()
     }
 
     internal func validated() throws -> VaultDocument {
-        guard [1, 2, 3].contains(version), entries.count <= 2000, tools.count <= 100 else { throw VaultError.invalidFormat }
+        guard [1, 2, 3, 4].contains(version), entries.count <= 2000, tools.count <= 100 else { throw VaultError.invalidFormat }
         var toolIdentifiers = Set<UUID>()
         let validatedTools = try tools.map { tool in
             guard toolIdentifiers.insert(tool.id).inserted else { throw VaultError.invalidFormat }
@@ -388,7 +398,8 @@ public struct VaultDocument: Codable, Sendable {
             }
             return validatedEntry
         }
-        return VaultDocument(entries: validatedEntries, tools: validatedTools)
+        return VaultDocument(entries: validatedEntries, tools: validatedTools,
+                             keychainConfiguration: try keychainConfiguration?.validated())
     }
 
     /// Stable conflict IDs make reimporting the same backup idempotent without

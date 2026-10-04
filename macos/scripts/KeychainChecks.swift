@@ -27,12 +27,48 @@ private final class KeychainChecks {
     }
 
     func run() throws {
+        try gesturesAndMeshBoundaries()
         try timeBoundaries()
         try extremeInputs()
         try settling()
         try releaseBoundaries()
         try reducedMotionAndReset()
-        print("PASS: \(assertions) keychain motion assertions; no windows, rendering, hardware, network or vault access.")
+        print("PASS: \(assertions) keychain motion, gesture and mesh assertions; no windows, rendering, hardware, network or vault access.")
+    }
+
+    private func gesturesAndMeshBoundaries() throws {
+        var press = KeychainPressState()
+        press.update(distance: 5.9)
+        try expect(!press.moved, "Small pointer jitter must remain a click")
+        press.update(distance: 6)
+        try expect(press.moved, "Crossing six points must become a drag")
+        press.update(distance: 0)
+        try expect(press.moved, "Returning to the origin must not turn a drag into a click")
+        var invalid = KeychainPressState()
+        invalid.update(distance: .nan)
+        try expect(invalid.moved, "Invalid pointer input must not trigger a click")
+        for name in ["../openai", "/tmp/key", "openai.png", "", "OpenAI", "a/b", String(repeating: "a", count: 60)] {
+            try expect(!KeychainMeshAsset.isSafeName(name), "Only bounded bundled asset identifiers may be resolved")
+        }
+        try expect(KeychainMeshAsset.isSafeName("glass-key-v1"), "Bundled key identifier must be supported")
+        let mesh: [String: Any] = ["name": "test", "role": "glass", "positions": [0,0,0, 1,0,0, 0,1,0],
+                                   "normals": [0,0,1, 0,0,1, 0,0,1], "indices": [0,1,2]]
+        func data(_ meshes: [[String: Any]], version: Int = 1) throws -> Data {
+            try JSONSerialization.data(withJSONObject: ["schemaVersion": version, "meshes": meshes])
+        }
+        let validData = try data([mesh])
+        try expect(KeychainMeshAsset.decode(validData) != nil, "A valid triangle must decode")
+        let nextVersionData = try data([mesh], version: 2)
+        try expect(KeychainMeshAsset.decode(nextVersionData) == nil, "Unknown mesh versions must fail closed")
+        let emptyData = try data([])
+        try expect(KeychainMeshAsset.decode(emptyData) == nil, "Empty meshes must fail closed")
+        for (key, value) in [("indices", [0,1,3] as Any), ("indices", [0,1] as Any),
+                             ("normals", [0,0,1] as Any), ("positions", [20,0,0, 1,0,0, 0,1,0] as Any),
+                             ("role", "external" as Any)] {
+            var broken = mesh; broken[key] = value
+            let brokenData = try data([broken])
+            try expect(KeychainMeshAsset.decode(brokenData) == nil, "Malformed geometry must never reach SceneKit")
+        }
     }
 
     private func timeBoundaries() throws {

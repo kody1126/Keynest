@@ -48,7 +48,7 @@ final class VaultCoreTests: XCTestCase {
         let reopenedStorage = try VaultStorage(directory: storage.directory)
         let reopened = try VaultCodec.decrypt(reopenedStorage.read(), password: password)
         XCTAssertEqual(reopened.document.entries, [fixtureEntry])
-        XCTAssertEqual(reopened.document.version, 3)
+        XCTAssertEqual(reopened.document.version, 4)
         let permissions = try FileManager.default.attributesOfItem(atPath: storage.fileURL.path)[.posixPermissions] as? NSNumber
         let directoryPermissions = try FileManager.default.attributesOfItem(atPath: storage.directory.path)[.posixPermissions] as? NSNumber
         XCTAssertEqual(permissions?.intValue, 0o600)

@@ -34,6 +34,12 @@ jobs:
         run: bash macos/scripts/run-app-checks.sh
       - name: Run keychain motion checks without a display
         run: bash macos/scripts/run-keychain-checks.sh
+      - name: Check exact grab-point geometry
+        run: bash macos/scripts/run-keychain-drag-checks.sh
+      - name: Run keychain catalog checks
+        run: bash macos/scripts/run-keychain-catalog-checks.sh
+      - name: Validate all bundled Blender meshes
+        run: bash macos/scripts/run-keychain-asset-checks.sh
       - name: Run biometric filesystem checks without hardware access
         run: bash macos/scripts/run-biometric-checks.sh --file-only
 

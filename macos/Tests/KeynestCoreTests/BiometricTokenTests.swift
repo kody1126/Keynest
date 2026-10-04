@@ -49,7 +49,7 @@ final class BiometricTokenTests: XCTestCase {
             XCTAssertEqual(slice.count, token.count)
             let reopened = try VaultCodec.decrypt(encrypted, biometricUnlockData: slice)
             XCTAssertEqual(reopened.document.entries, [entry])
-            XCTAssertEqual(reopened.sourceVersion, 3)
+            XCTAssertEqual(reopened.sourceVersion, 4)
             var damaged = slice
             damaged[damaged.endIndex - 1] ^= 1
             XCTAssertThrowsError(try VaultCodec.decrypt(encrypted, biometricUnlockData: damaged)) {

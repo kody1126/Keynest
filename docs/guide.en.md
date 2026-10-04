@@ -4,7 +4,7 @@
 
 A native macOS app for collecting and managing API keys. Unlock your vault, find a provider on Home, and copy the key you need. Account labels, environments, and API hosts help distinguish multiple keys from the same provider. You can also organize keys by the tools that use them, and share one key across multiple tools.
 
-The current release is **0.9.0 (build 11)**. Home adds a large, draggable 3D keyring above the provider cards. Search stays at the top right. This experimental native Mac app retains the security fixes from 0.8.1 and uses SwiftUI and AppKit, with no Node.js, browser, or cloud account required. The distributed build targets Apple Silicon Macs running macOS 14 or later. The app currently has a Chinese interface.
+The current release is **0.10.0 (build 12)**. Customize the 3D keyring on Home, click a provider charm, and choose which key to copy. Provider cards and search remain available. This experimental native Mac app retains the security fixes from 0.8.1 and uses SwiftUI and AppKit, with no Node.js, browser, or cloud account required. The distributed build targets Apple Silicon Macs running macOS 14 or later. The app currently has a Chinese interface.
 
 ## Open the app
 
@@ -14,7 +14,7 @@ Download a macOS package from [GitHub Releases](https://github.com/kody1126/Keyn
 open "$HOME/Applications/Keynest.app"
 ```
 
-The current disk image is `Keynest-0.9.0-arm64.dmg` ([download v0.9.0](https://github.com/kody1126/Keynest/releases/tag/v0.9.0)). It contains both `Keynest.app` and the separate `Keynest Demo.app`. Install both into `~/Applications` before opening them. The apps use local ad-hoc signatures; they are not signed with an Apple Developer ID or notarized by Apple.
+The current disk image is `Keynest-0.10.0-arm64.dmg` ([download v0.10.0](https://github.com/kody1126/Keynest/releases/tag/v0.10.0)). It contains both `Keynest.app` and the separate `Keynest Demo.app`. Install both into `~/Applications` before opening them. The apps use local ad-hoc signatures; they are not signed with an Apple Developer ID or notarized by Apple.
 
 On first launch, set a master password of at least **12 characters**. On Home, choose a provider, paste your key, and select **Save to Home (保存到首页)**. Presets fill in the name and a common API address; project-specific addresses must be entered as indicated. Expand the optional fields to add an account label or environment. **Full Editor… (完整编辑…)** also lets you add tags, notes, and tool associations. Subsequent unlocks open Home by default. There is no master-password recovery.
 
@@ -30,8 +30,11 @@ Demo data is stored separately from the regular vault in `~/Library/Application 
 
 ## Everyday use
 
-- **Interactive keyring:** The large display at the top of Home shows a keyring in silver and ice blue with multiple chains and OpenAI, Claude, and Gemini logo charms. Drag it and release to let it spring back. **Reset (复位)** restores its initial pose; **Collapse / Expand (收起 / 展开)** lets you hide or show it, and the app remembers your choice. Collapsing it brings the provider cards directly into view.
-- **Local decoration:** The scene uses native SceneKit rendering, makes no network requests, and does not receive, read, or store key data. It does not indicate provider connection status or manage credentials. It respects the system's Reduce Motion setting.
+- **Interactive keyring:** Only the lower arc of a metal clasp appears below the cropped top edge, with chains of staggered lengths that complement the light interface. The 61 independent enamel brand charms follow the logos' contours, with cutouts, depth, and soft highlights, modeled in Blender and rendered locally. Multicolor logos use a representative hue. Custom providers without artwork use glass keys in six colors: ice, lavender, mint, amber, rose, and graphite.
+- **Click to choose a key:** Clicking a charm opens all current keys for that provider, each with its own Copy button. The click never silently copies the first key. Providers without saved keys offer **Add API Key (添加 API 密钥)** and an official API website link. The named buttons beneath the scene also work with the keyboard and VoiceOver.
+- **Choose your charms:** Click the metal clasp or **Customize (定制)** to select and reorder **0–8 charms** from the 61 presets and your saved custom providers. Save an empty selection to keep only the clasp. Cancel leaves your saved setup unchanged. **Restore Automatic Selection (恢复自动选择)** uses the first three saved providers in Home order; an empty vault shows OpenAI, Claude, and Gemini. Save to apply this choice. Missing custom providers are marked unavailable in the editor and omitted from the scene until you remove or replace them.
+- **Drag and reset:** A movement of 6 points or more counts as a drag, even if you move back to the starting point, so it does not open a key panel. **Reset (复位)** restores the initial pose; **Collapse / Expand (收起 / 展开)** remembers your preference. Reduce Motion disables inertial motion, and Reduce Transparency uses opaque materials. Continuous rendering stops when the scene settles, is collapsed, leaves Home, or locks.
+- **Encrypted configuration:** Your charm selection, order, colors, and custom-provider references are encrypted with the vault and included in backups, not saved as plaintext preferences. The SceneKit component receives only display identifiers, names, artwork, and colors; it holds no secret values and makes no network requests. The key panel resolves current records from the unlocked vault. A charm is not a provider connection-status indicator.
 - **Copy from Home:** Provider cards fit their content in a compact layout, reducing empty space between cards. Each key has its own Copy button. A card still shows up to two keys directly; use **View All (查看全部)** to explicitly choose from additional keys. Account labels, environments, and API hostnames help distinguish personal accounts, team accounts, and custom gateways.
 - **Home filters and search:** Search stays at the top right, alongside the compact header. Filter by **All / Models / Skills & Services / Favorites (全部 / 模型 / Skill 与服务 / 常用)**. Home searches provider names and aliases, key names, account labels, environments, tags, and associated tool names. It does not search secrets, URLs, or notes. The management view retains broader metadata search, including URLs and notes.
 - **Large catalogs:** Home initially shows up to 80 matching providers. Use **Show more providers (显示更多平台)** below the cards to expand the list. Search always covers the full vault; changing the query or scope returns to the top of the results.
@@ -74,11 +77,15 @@ The native app stores its vault at:
 ~/Library/Application Support/Keynest/vault.keynest
 ```
 
-Names, keys, tags, notes, and quota snapshots are encrypted together with **AES-256-GCM**. The encryption key is derived from the master password using **PBKDF2-HMAC-SHA256**, with **600,000 iterations** and a **32-byte random salt**. Each write uses a fresh random nonce. MD5 is not used. The regular app does not persist your chosen master password. It does not initiate cloud synchronization, automatically read credentials from other tools, or modify CLI, MCP, or Skills configuration.
+Names, keys, tags, notes, quota snapshots, and keyring configuration are encrypted together with **AES-256-GCM**. The encryption key is derived from the master password using **PBKDF2-HMAC-SHA256**, with **600,000 iterations** and a **32-byte random salt**. Each write uses a fresh random nonce. MD5 is not used. The regular app does not persist your chosen master password. It does not initiate cloud synchronization, automatically read credentials from other tools, or modify CLI, MCP, or Skills configuration.
 
 Touch ID protects access to the vault through Secure Enclave access control tied to the currently enrolled fingerprints. Only a hardware-bound private-key representation and encrypted, wrapped unlock material are stored locally; failed authentication cannot decrypt the vault. See the [Touch ID implementation and verification notes](../research/touch-id-0.6.md).
 
-Version 0.9.0 retains payload version 3 from 0.7 and can read versions 1 and 2. The demo catalog revision remains 7. The decorative Home scene does not change the encryption format or repopulate demo data. The upgrade protection introduced in 0.7 still applies: before the first save of an older format, Keynest preserves the original encrypted bytes as `vault-before-0.7.keynest` in the same directory. Existing 0.5 upgrade backups are also retained. Versions 0.6 and earlier cannot read payload version 3; downgrading requires a pre-upgrade backup and the password used at that time. See [upgrades and compatibility](../macos/README.md#升级与兼容性).
+Version 0.10.0 writes **payload version 4** and reads versions **1, 2, and 3**, preserving their records and associations. Old vaults use automatic keyring selection until you save a configuration; an explicitly saved empty selection is different. The encrypted outer envelope remains version 1, with unchanged AES-256-GCM and password derivation. The demo catalog revision stays **7**, so this format upgrade does not repopulate deleted demo samples.
+
+Before saving an older payload for the first time, Keynest preserves its original encrypted bytes as **`vault-before-0.10.keynest`** in the same directory. Existing upgrade backups are never overwritten, including `vault-before-0.5.keynest` and `vault-before-0.7.keynest`. If preserving the backup fails, the upgrade is not saved. Version 0.9 and earlier cannot read payload version 4; downgrading requires the pre-upgrade backup and the password used for it. The historical 0.7 migration introduced optional tool-template identifiers; those identifiers and custom tools remain supported. See [upgrades and compatibility](../macos/README.md#升级与兼容性).
+
+Restoring a backup also restores its keyring configuration. When merging into an existing vault, an explicitly saved local configuration takes priority, including an empty keyring. A vault still using automatic selection can adopt the imported configuration. Missing custom-provider references never bind to a different provider automatically.
 
 Version 0.8.1 fixes imports committing after cancellation, clipboard ownership races, hard-link file permission handling, malformed URLs, a crash involving certain slices of unlock data, and inconsistencies between in-memory state and encrypted files after disk synchronization failures. Inactivity locking now uses a monotonic clock, and both apps enable Hardened Runtime. Existing passwords remain usable; newly created or changed passwords also have a maximum UTF-8 size of 16 KiB. See the [security review and fixes](../research/security-review-0.8.1.md).
 
@@ -108,7 +115,7 @@ The build reads [AppIcon.selection](../macos/Resources/AppIcon.selection) to cho
 - [0.8.1 security review and fixes](../research/security-review-0.8.1.md)
 - [Native app verification record](../macos/verification.md)
 
-The native source is in `macos/`, using Apple's SwiftUI, AppKit, and SceneKit frameworks with no third-party Swift Package dependencies. You can check, build, and package it with the macOS Command Line Tools; a full Xcode installation is not required:
+The native source is in `macos/`, using Apple's SwiftUI, AppKit, and SceneKit frameworks with no third-party Swift Package dependencies. You can check, build, and package it with the macOS Command Line Tools; a full Xcode installation is not required. Installing the app or making a normal source build does not require Blender. Developers use Blender only to regenerate the committed [3D assets](../macos/Resources/KeychainArt/README.md).
 
 ```sh
 git clone https://github.com/kody1126/Keynest.git
@@ -116,6 +123,9 @@ cd Keynest/macos
 bash scripts/run-checks.sh
 bash scripts/run-app-checks.sh
 bash scripts/run-keychain-checks.sh
+bash scripts/run-keychain-drag-checks.sh
+bash scripts/run-keychain-catalog-checks.sh
+bash scripts/run-keychain-asset-checks.sh
 zsh scripts/build-app.sh
 zsh scripts/build-demo-app.sh
 zsh scripts/package-app.sh
@@ -125,6 +135,8 @@ zsh scripts/install-apps.sh
 Intermediate app bundles live only in `macos/dist/apps.noindex/`. Do not run them directly from the build directory or disk image. The installer places both apps in `~/Applications`. Before replacing an app, it checks its identity and signature, archives the old app in a verified ZIP under `.build/app-backups/`, and attempts rollback if installation fails. Installation does not launch either app, access a vault, or change system indexing settings.
 
 The packaging script builds both apps, creates the DMG, verifies the disk image, and writes a SHA-256 checksum file. The [verification record](../macos/verification.md) is the reference for completed checks, builds, and hands-on app verification for each release.
+
+The keyring checks run without windows: `run-keychain-checks.sh` exercises motion, click-versus-drag boundaries, and mesh validation without creating a renderer. `run-keychain-drag-checks.sh` checks off-center grips, chain links, and bounded rotation/extension by projecting solved poses back to the pointer. `run-keychain-catalog-checks.sh` uses fictional in-memory entries to check platform selection, ordering, automatic defaults, empty lists, and unavailable references. Visual quality and real window lifecycle behavior still require hands-on verification.
 
 ## Archived web experiment
 

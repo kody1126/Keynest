@@ -27,6 +27,11 @@ cp .build/release/Keynest "$app_dir/Contents/MacOS/Keynest"
 cp Resources/Info.plist "$app_dir/Contents/Info.plist"
 ditto Resources/ProviderIcons "$app_dir/Contents/Resources/ProviderIcons"
 ditto Resources/ToolIcons "$app_dir/Contents/Resources/ToolIcons"
+mkdir -p "$app_dir/Contents/Resources/KeychainArt/charms"
+cp Resources/KeychainArt/glass-key-v1.mesh.json "$app_dir/Contents/Resources/KeychainArt/"
+cp Resources/KeychainArt/manifest.json "$app_dir/Contents/Resources/KeychainArt/"
+cp Resources/KeychainArt/charms/*.mesh.json "$app_dir/Contents/Resources/KeychainArt/charms/"
+bash "$project_dir/scripts/run-keychain-asset-checks.sh" "$app_dir/Contents/Resources"
 selected_icon="$(tr -d '[:space:]' < Resources/AppIcon.selection)"
 case "$selected_icon" in
     A|B|C|D) iconset="Resources/design/options/$selected_icon.iconset" ;;

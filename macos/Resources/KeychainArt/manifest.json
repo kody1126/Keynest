@@ -1,0 +1,1545 @@
+{
+  "schemaVersion": 1,
+  "generator": "Blender 5.2.2 LTS",
+  "model": "glass-key-v1.mesh.json",
+  "anchor": [
+    0,
+    1,
+    0
+  ],
+  "logoCenter": [
+    0,
+    0.43,
+    0.167
+  ],
+  "dimensions": [
+    1.12,
+    2.2,
+    0.308
+  ],
+  "baseTriangles": 5376,
+  "materials": {
+    "glass": {
+      "metalness": 0,
+      "roughness": 0.105,
+      "ior": 1.46,
+      "transmission": 1
+    },
+    "metal": {
+      "color": "BFC9D2",
+      "metalness": 0.92,
+      "roughness": 0.21
+    },
+    "logo": {
+      "metalness": 0.15,
+      "roughness": 0.2
+    }
+  },
+  "colorSpace": "sRGB",
+  "charmProfile": {
+    "thickness": 0.22,
+    "bevel": 0.014,
+    "bevelMethod": "inward-solid-edge"
+  },
+  "charmMaterials": {
+    "logo": {
+      "metalness": 0.06,
+      "roughness": 0.22,
+      "ior": 1.46,
+      "transmission": 0,
+      "coat": 0.28
+    }
+  },
+  "palettes": {
+    "ice": {
+      "name": "冰蓝",
+      "color": "96D4EF"
+    },
+    "lavender": {
+      "name": "薰衣草",
+      "color": "C4AFE7"
+    },
+    "mint": {
+      "name": "薄荷",
+      "color": "92D6C0"
+    },
+    "amber": {
+      "name": "琥珀",
+      "color": "E9B566"
+    },
+    "rose": {
+      "name": "玫瑰",
+      "color": "E7A9C4"
+    },
+    "graphite": {
+      "name": "石墨",
+      "color": "8A9AAC"
+    }
+  },
+  "providers": {
+    "amap": {
+      "mesh": "logos/amap.mesh.json",
+      "color": "0085FE",
+      "charm": "charms/amap.mesh.json",
+      "charmTriangles": 1492,
+      "rgba": [
+        0.0,
+        0.521569,
+        0.996078,
+        1
+      ],
+      "extraction": {
+        "method": "blue-arrow-on-multicolor-map-background",
+        "sourceOpaqueCoverage": 0.953613,
+        "silhouetteBoundingBoxCoverage": 0.406522,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 248,
+      "contours": 1,
+      "source": "../ProviderIcons/amap.png",
+      "sourceSHA256": "360385d0bb1656a17cd3baddd947d5fb089c070d22b3d4b98a7798e1c12fcbe3"
+    },
+    "anthropic": {
+      "mesh": "logos/anthropic.mesh.json",
+      "color": "D97757",
+      "charm": "charms/anthropic.mesh.json",
+      "charmTriangles": 5112,
+      "rgba": [
+        0.85098,
+        0.466667,
+        0.341176,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.398123,
+        "silhouetteBoundingBoxCoverage": 0.398123,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 1544,
+      "contours": 1,
+      "source": "../ProviderIcons/anthropic.png",
+      "sourceSHA256": "97b53fb85b3bf401ffeb8ee7c5ebad734ce9f6edc3038f242021c53bcc18e23d"
+    },
+    "apify": {
+      "mesh": "logos/apify.mesh.json",
+      "color": "F86606",
+      "charm": "charms/apify.mesh.json",
+      "charmTriangles": 2112,
+      "rgba": [
+        0.972549,
+        0.4,
+        0.023529,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.569035,
+        "silhouetteBoundingBoxCoverage": 0.569035,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 516,
+      "contours": 3,
+      "source": "../ProviderIcons/apify.png",
+      "sourceSHA256": "300e3d1cc4b5e33d7e5308ecbf25c5d3879e6cd3c8d4db7bd779e19e204f0bab"
+    },
+    "assemblyai": {
+      "mesh": "logos/assemblyai.mesh.json",
+      "color": "566DE8",
+      "charm": "charms/assemblyai.mesh.json",
+      "charmTriangles": 1480,
+      "rgba": [
+        0.337255,
+        0.427451,
+        0.909804,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.443871,
+        "silhouetteBoundingBoxCoverage": 0.443871,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 404,
+      "contours": 1,
+      "source": "../ProviderIcons/assemblyai.png",
+      "sourceSHA256": "ae3f2d137cfde9a5fdb243f3ae55497c43b47f65e33eacd70477e62cddc8fded"
+    },
+    "brave": {
+      "mesh": "logos/brave.mesh.json",
+      "color": "FF4600",
+      "charm": "charms/brave.mesh.json",
+      "charmTriangles": 4848,
+      "rgba": [
+        1.0,
+        0.27451,
+        0.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.484125,
+        "silhouetteBoundingBoxCoverage": 0.484125,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2116,
+      "contours": 3,
+      "source": "../ProviderIcons/brave.png",
+      "sourceSHA256": "a71a359512a30f66fda2b4eb6aa42c4d8dce935e1ba34be97f2d29910000decb"
+    },
+    "browserbase": {
+      "mesh": "logos/browserbase.mesh.json",
+      "color": "FF4500",
+      "charm": "charms/browserbase.mesh.json",
+      "charmTriangles": 2060,
+      "rgba": [
+        1.0,
+        0.270588,
+        0.0,
+        1
+      ],
+      "extraction": {
+        "method": "light-symbol-on-brand-background",
+        "sourceOpaqueCoverage": 1.0,
+        "silhouetteBoundingBoxCoverage": 0.883879,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 388,
+      "contours": 3,
+      "source": "../ProviderIcons/browserbase.png",
+      "sourceSHA256": "82ec30d7f7a7d21b7e26915152da2a1319a532873b55895123664a03d18cbb2f"
+    },
+    "browserless": {
+      "mesh": "logos/browserless.mesh.json",
+      "color": "415A68",
+      "charm": "charms/browserless.mesh.json",
+      "charmTriangles": 3424,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.349738,
+        "silhouetteBoundingBoxCoverage": 0.349738,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1576,
+      "contours": 7,
+      "source": "../ProviderIcons/browserless.png",
+      "sourceSHA256": "61c254e8894c0b6c77217fac254337b94171c1deec68653a0e3ca81105230760"
+    },
+    "cartesia": {
+      "mesh": "logos/cartesia.mesh.json",
+      "color": "309D4B",
+      "charm": "charms/cartesia.mesh.json",
+      "charmTriangles": 2276,
+      "rgba": [
+        0.188235,
+        0.615686,
+        0.294118,
+        1
+      ],
+      "extraction": {
+        "method": "light-symbol-on-brand-background",
+        "sourceOpaqueCoverage": 0.999984,
+        "silhouetteBoundingBoxCoverage": 0.559187,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 452,
+      "contours": 1,
+      "source": "../ProviderIcons/cartesia.png",
+      "sourceSHA256": "43d9586c6498398c30e141c7bd1b9f686ebf940acc0adbdd594cb9a7594ba8dc"
+    },
+    "cloudflare": {
+      "mesh": "logos/cloudflare.mesh.json",
+      "color": "F38020",
+      "charm": "charms/cloudflare.mesh.json",
+      "charmTriangles": 2960,
+      "rgba": [
+        0.952941,
+        0.501961,
+        0.12549,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.624418,
+        "silhouetteBoundingBoxCoverage": 0.624418,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1156,
+      "contours": 2,
+      "source": "../ProviderIcons/cloudflare.png",
+      "sourceSHA256": "aba89431db3134e8bf1f6796d5532b5c6b3cd2c4fd02b422ee5293ce7d994297"
+    },
+    "cohere": {
+      "mesh": "logos/cohere.mesh.json",
+      "color": "D18EE2",
+      "charm": "charms/cohere.mesh.json",
+      "charmTriangles": 2720,
+      "rgba": [
+        0.819608,
+        0.556863,
+        0.886275,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.783047,
+        "silhouetteBoundingBoxCoverage": 0.783047,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1428,
+      "contours": 3,
+      "source": "../ProviderIcons/cohere.png",
+      "sourceSHA256": "446a81bf086210604eda741826aa9c4b00d988136018db245f8f3ad61c5a4823"
+    },
+    "composio": {
+      "mesh": "logos/composio.mesh.json",
+      "color": "31AAFF",
+      "charm": "charms/composio.mesh.json",
+      "charmTriangles": 3396,
+      "rgba": [
+        0.192157,
+        0.666667,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "light-or-colored-symbol-on-black-background",
+        "sourceOpaqueCoverage": 1.0,
+        "silhouetteBoundingBoxCoverage": 0.444482,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1412,
+      "contours": 4,
+      "source": "../ProviderIcons/composio.png",
+      "sourceSHA256": "3197ba6d06b21e1bc0d46436afb31a87b9399f4ee8cfbace0298c939557ea8bb"
+    },
+    "context7": {
+      "mesh": "logos/context7.mesh.json",
+      "color": "047857",
+      "charm": "charms/context7.mesh.json",
+      "charmTriangles": 4508,
+      "rgba": [
+        0.015686,
+        0.470588,
+        0.341176,
+        1
+      ],
+      "extraction": {
+        "method": "light-symbol-on-brand-background",
+        "sourceOpaqueCoverage": 0.999984,
+        "silhouetteBoundingBoxCoverage": 0.272552,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1568,
+      "contours": 4,
+      "source": "../ProviderIcons/context7.png",
+      "sourceSHA256": "0c250e0f2793b7b15693575804f88caab7b54227a9fa65b1258b368822ad54d2"
+    },
+    "deepgram": {
+      "mesh": "logos/deepgram.mesh.json",
+      "color": "13EF93",
+      "charm": "charms/deepgram.mesh.json",
+      "charmTriangles": 2312,
+      "rgba": [
+        0.07451,
+        0.937255,
+        0.576471,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.637888,
+        "silhouetteBoundingBoxCoverage": 0.637888,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 908,
+      "contours": 1,
+      "source": "../ProviderIcons/deepgram.png",
+      "sourceSHA256": "c48c0424c39189f09d9ba2b32f9e2be617e532e4237df6892ab1cbcef45c8d23"
+    },
+    "deepinfra": {
+      "mesh": "logos/deepinfra.mesh.json",
+      "color": "2A3275",
+      "charm": "charms/deepinfra.mesh.json",
+      "charmTriangles": 13212,
+      "rgba": [
+        0.164706,
+        0.196078,
+        0.458824,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.298107,
+        "silhouetteBoundingBoxCoverage": 0.298107,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 8736,
+      "contours": 32,
+      "source": "../ProviderIcons/deepinfra.png",
+      "sourceSHA256": "b0a474cd40c76b3e547ca4e45eea2db17db4c56fef71849bc3eba14e6ba29d53"
+    },
+    "deepseek": {
+      "mesh": "logos/deepseek.mesh.json",
+      "color": "4D6BFE",
+      "charm": "charms/deepseek.mesh.json",
+      "charmTriangles": 5040,
+      "rgba": [
+        0.301961,
+        0.419608,
+        0.996078,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.504064,
+        "silhouetteBoundingBoxCoverage": 0.504064,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 2360,
+      "contours": 4,
+      "source": "../ProviderIcons/deepseek.png",
+      "sourceSHA256": "f98596fd7802ca0c5290c498fec578fa823988646332ee36c43b7920dc4936eb"
+    },
+    "dingtalk": {
+      "mesh": "logos/dingtalk.mesh.json",
+      "color": "007FFF",
+      "charm": "charms/dingtalk.mesh.json",
+      "charmTriangles": 2936,
+      "rgba": [
+        0.0,
+        0.498039,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.4516,
+        "silhouetteBoundingBoxCoverage": 0.4516,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1016,
+      "contours": 1,
+      "source": "../ProviderIcons/dingtalk.png",
+      "sourceSHA256": "beaed2c1db4774f82bff2f27ef0bd5993a35cba1d7e67760565b11e19adcf45e"
+    },
+    "doubao": {
+      "mesh": "logos/doubao.mesh.json",
+      "color": "A569FF",
+      "charm": "charms/doubao.mesh.json",
+      "charmTriangles": 2348,
+      "rgba": [
+        0.647059,
+        0.411765,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.525352,
+        "silhouetteBoundingBoxCoverage": 0.525352,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 1104,
+      "contours": 2,
+      "source": "../ProviderIcons/doubao.png",
+      "sourceSHA256": "e2a9ade3d125e2965ed06bb1910223b8723a2a9402ad608eb49f540272209847"
+    },
+    "elevenlabs": {
+      "mesh": "logos/elevenlabs.mesh.json",
+      "color": "415A68",
+      "charm": "charms/elevenlabs.mesh.json",
+      "charmTriangles": 1188,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.72,
+        "silhouetteBoundingBoxCoverage": 0.72,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 88,
+      "contours": 2,
+      "source": "../ProviderIcons/elevenlabs.png",
+      "sourceSHA256": "3b8a887c3c64407995eeb278c55bfecaf2257c753298405598148126b18912b4"
+    },
+    "exa": {
+      "mesh": "logos/exa.mesh.json",
+      "color": "1F40ED",
+      "charm": "charms/exa.mesh.json",
+      "charmTriangles": 2264,
+      "rgba": [
+        0.121569,
+        0.25098,
+        0.929412,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.485688,
+        "silhouetteBoundingBoxCoverage": 0.485688,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 468,
+      "contours": 5,
+      "source": "../ProviderIcons/exa.png",
+      "sourceSHA256": "1feb147f3607e7235435a5f0cc70e08406d33cd3e145a551e1911b08880511db"
+    },
+    "fal": {
+      "mesh": "logos/fal.mesh.json",
+      "color": "EC0648",
+      "charm": "charms/fal.mesh.json",
+      "charmTriangles": 2956,
+      "rgba": [
+        0.92549,
+        0.023529,
+        0.282353,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.385895,
+        "silhouetteBoundingBoxCoverage": 0.385895,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1416,
+      "contours": 2,
+      "source": "../ProviderIcons/fal.png",
+      "sourceSHA256": "f230b03cb1efce6afd09c3ede82a0d7ca3ef3a819dff162dc8bb1169bd817b6c"
+    },
+    "feishu": {
+      "mesh": "logos/feishu.mesh.json",
+      "color": "3370FF",
+      "charm": "charms/feishu.mesh.json",
+      "charmTriangles": 2088,
+      "rgba": [
+        0.2,
+        0.439216,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "colored-symbol-on-white-background",
+        "sourceOpaqueCoverage": 0.986919,
+        "silhouetteBoundingBoxCoverage": 0.583653,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 740,
+      "contours": 1,
+      "source": "../ProviderIcons/feishu.png",
+      "sourceSHA256": "e33f43d8cf6b0a3f43dbfac208750fd74673b0550196fdad9c3afd4c27183992"
+    },
+    "firecrawl": {
+      "mesh": "logos/firecrawl.mesh.json",
+      "color": "FF4D00",
+      "charm": "charms/firecrawl.mesh.json",
+      "charmTriangles": 3416,
+      "rgba": [
+        1.0,
+        0.301961,
+        0.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.500748,
+        "silhouetteBoundingBoxCoverage": 0.500748,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1352,
+      "contours": 1,
+      "source": "../ProviderIcons/firecrawl.png",
+      "sourceSHA256": "4167db0526e98596cbe31d0d2f63f90099b6eb7b4f0a2cc73b22c20f7775bcac"
+    },
+    "github": {
+      "mesh": "logos/github.mesh.json",
+      "color": "415A68",
+      "charm": "charms/github.mesh.json",
+      "charmTriangles": 3908,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.441311,
+        "silhouetteBoundingBoxCoverage": 0.441311,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1868,
+      "contours": 1,
+      "source": "../ProviderIcons/github.png",
+      "sourceSHA256": "16cef8e7ccdc935bdbb8eeb2151a9190fc07b210bc87ee10cf3b08c7077e8298"
+    },
+    "glm": {
+      "mesh": "logos/glm.mesh.json",
+      "color": "3859FF",
+      "charm": "charms/glm.mesh.json",
+      "charmTriangles": 9236,
+      "rgba": [
+        0.219608,
+        0.34902,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.200333,
+        "silhouetteBoundingBoxCoverage": 0.200333,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 5072,
+      "contours": 22,
+      "source": "../ProviderIcons/glm.png",
+      "sourceSHA256": "612dca42bba94fd6e760eea79bb34ee8f40f23e24944e58075d6a9ff43b6801a"
+    },
+    "google": {
+      "mesh": "logos/google.mesh.json",
+      "color": "3186FF",
+      "charm": "charms/google.mesh.json",
+      "charmTriangles": 2280,
+      "rgba": [
+        0.192157,
+        0.52549,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.353627,
+        "silhouetteBoundingBoxCoverage": 0.353627,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 764,
+      "contours": 1,
+      "source": "../ProviderIcons/google.png",
+      "sourceSHA256": "10c628f55d22a9725b9f9fccce7cf062b9fb68da5f7736e87010e0594d7ba6db"
+    },
+    "groq": {
+      "mesh": "logos/groq.mesh.json",
+      "color": "415A68",
+      "charm": "charms/groq.mesh.json",
+      "charmTriangles": 2696,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.447625,
+        "silhouetteBoundingBoxCoverage": 0.447625,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1316,
+      "contours": 1,
+      "source": "../ProviderIcons/groq.png",
+      "sourceSHA256": "14592b69389a4f2663fbf62a06870ee0136504f82de166615f57d3f138b4641d"
+    },
+    "huggingface": {
+      "mesh": "logos/huggingface.mesh.json",
+      "color": "FFD21E",
+      "charm": "charms/huggingface.mesh.json",
+      "charmTriangles": 4496,
+      "rgba": [
+        1.0,
+        0.823529,
+        0.117647,
+        1
+      ],
+      "extraction": {
+        "method": "alpha-with-dark-face-detail-cutouts",
+        "sourceOpaqueCoverage": 0.793329,
+        "silhouetteBoundingBoxCoverage": 0.751347,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2120,
+      "contours": 4,
+      "source": "../ProviderIcons/huggingface.png",
+      "sourceSHA256": "2e6119fd9dcc2c8670b3dcb544f997fcd190f091a4cda8e9fce56d04a267ef3e"
+    },
+    "jina": {
+      "mesh": "logos/jina.mesh.json",
+      "color": "415A68",
+      "charm": "charms/jina.mesh.json",
+      "charmTriangles": 1876,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.582952,
+        "silhouetteBoundingBoxCoverage": 0.582952,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 748,
+      "contours": 2,
+      "source": "../ProviderIcons/jina.png",
+      "sourceSHA256": "f7a375a5af68671b66a8367b8f76b392c8d70a64a3c9350e1a8b9c669ec6875e"
+    },
+    "kimi": {
+      "mesh": "logos/kimi.mesh.json",
+      "color": "1883FF",
+      "charm": "charms/kimi.mesh.json",
+      "charmTriangles": 2208,
+      "rgba": [
+        0.094118,
+        0.513725,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "light-or-colored-symbol-on-black-background",
+        "sourceOpaqueCoverage": 1.0,
+        "silhouetteBoundingBoxCoverage": 0.354292,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 592,
+      "contours": 2,
+      "source": "../ProviderIcons/kimi.png",
+      "sourceSHA256": "5ba5d787a1a8384f1189ff05903cdf412afcd29c00d38914ea1b17219ed0cf4e"
+    },
+    "langfuse": {
+      "mesh": "logos/langfuse.mesh.json",
+      "color": "FF5D5F",
+      "charm": "charms/langfuse.mesh.json",
+      "charmTriangles": 5692,
+      "rgba": [
+        1.0,
+        0.364706,
+        0.372549,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.584775,
+        "silhouetteBoundingBoxCoverage": 0.584775,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2536,
+      "contours": 6,
+      "source": "../ProviderIcons/langfuse.png",
+      "sourceSHA256": "33d91edfd6872d826196b4370afab20fe2ed160bcdf08bf716251f23cd1984e7"
+    },
+    "langsmith": {
+      "mesh": "logos/langsmith.mesh.json",
+      "color": "415A68",
+      "charm": "charms/langsmith.mesh.json",
+      "charmTriangles": 7212,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.728729,
+        "silhouetteBoundingBoxCoverage": 0.728729,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2668,
+      "contours": 7,
+      "source": "../ProviderIcons/langsmith.png",
+      "sourceSHA256": "87d6a30c2fe56368051e11dbb05dbdb20503c8b58bda56030df773058838f9ee"
+    },
+    "mapbox": {
+      "mesh": "logos/mapbox.mesh.json",
+      "color": "415A68",
+      "charm": "charms/mapbox.mesh.json",
+      "charmTriangles": 3220,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.576679,
+        "silhouetteBoundingBoxCoverage": 0.576679,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1496,
+      "contours": 3,
+      "source": "../ProviderIcons/mapbox.png",
+      "sourceSHA256": "c31980c95cf9638a018ff57c5a6423680a3df17c2d43cbed80945105f6933dd7"
+    },
+    "mem0": {
+      "mesh": "logos/mem0.mesh.json",
+      "color": "9D7FCE",
+      "charm": "charms/mem0.mesh.json",
+      "charmTriangles": 8872,
+      "rgba": [
+        0.615686,
+        0.498039,
+        0.807843,
+        1
+      ],
+      "extraction": {
+        "method": "dark-symbol-on-light-background",
+        "sourceOpaqueCoverage": 0.987961,
+        "silhouetteBoundingBoxCoverage": 0.391879,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 5212,
+      "contours": 17,
+      "source": "../ProviderIcons/mem0.png",
+      "sourceSHA256": "bebd0a8c290c05492a24e345933456efee663153b8ab3939b156a4c69b88b5d4"
+    },
+    "minimax": {
+      "mesh": "logos/minimax.mesh.json",
+      "color": "F64B4E",
+      "charm": "charms/minimax.mesh.json",
+      "charmTriangles": 4740,
+      "rgba": [
+        0.964706,
+        0.294118,
+        0.305882,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.331399,
+        "silhouetteBoundingBoxCoverage": 0.331399,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 2464,
+      "contours": 2,
+      "source": "../ProviderIcons/minimax.png",
+      "sourceSHA256": "9e596627348deb4030938a948243cc94e96cc1548d645ce4faf1de0e51b9043a"
+    },
+    "mistral": {
+      "mesh": "logos/mistral.mesh.json",
+      "color": "E10500",
+      "charm": "charms/mistral.mesh.json",
+      "charmTriangles": 2768,
+      "rgba": [
+        0.882353,
+        0.019608,
+        0.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.572319,
+        "silhouetteBoundingBoxCoverage": 0.572319,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 628,
+      "contours": 3,
+      "source": "../ProviderIcons/mistral.png",
+      "sourceSHA256": "6514ebd2106f744c5d7e31799f6f505ee2ae923069658e4c4d0a381ba2cb7fc0"
+    },
+    "notion": {
+      "mesh": "logos/notion.mesh.json",
+      "color": "415A68",
+      "charm": "charms/notion.mesh.json",
+      "charmTriangles": 3756,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.504942,
+        "silhouetteBoundingBoxCoverage": 0.504942,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1488,
+      "contours": 4,
+      "source": "../ProviderIcons/notion.png",
+      "sourceSHA256": "0e7c2592efbd65c5152a2ae8b33cbcc9f9cfa2845ed827d0382da8e36dbfee38"
+    },
+    "openai": {
+      "mesh": "logos/openai.mesh.json",
+      "color": "344C57",
+      "charm": "charms/openai.mesh.json",
+      "charmTriangles": 5584,
+      "rgba": [
+        0.203922,
+        0.298039,
+        0.341176,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.374342,
+        "silhouetteBoundingBoxCoverage": 0.374342,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 2844,
+      "contours": 8,
+      "source": "../ProviderIcons/openai.png",
+      "sourceSHA256": "8a33312f6bb17c1edddf8f9d7fbac09ce1d1d697d6601f37227afa879e94c52e"
+    },
+    "openrouter": {
+      "mesh": "logos/openrouter.mesh.json",
+      "color": "7624F4",
+      "charm": "charms/openrouter.mesh.json",
+      "charmTriangles": 2444,
+      "rgba": [
+        0.462745,
+        0.141176,
+        0.956863,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.655449,
+        "silhouetteBoundingBoxCoverage": 0.655449,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 1200,
+      "contours": 2,
+      "source": "../ProviderIcons/openrouter.png",
+      "sourceSHA256": "010c2a3811aad28e152047016bd40ac13a6487cab02df3166afeba7e7c7ee1c9"
+    },
+    "openweather": {
+      "mesh": "logos/openweather.mesh.json",
+      "color": "EB6E4B",
+      "charm": "charms/openweather.mesh.json",
+      "charmTriangles": 3520,
+      "rgba": [
+        0.921569,
+        0.431373,
+        0.294118,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.631195,
+        "silhouetteBoundingBoxCoverage": 0.631195,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1764,
+      "contours": 3,
+      "source": "../ProviderIcons/openweather.png",
+      "sourceSHA256": "5f1647d1ff4d999954e3d054a89bd886ea50f97b38d1f53682d4536953587bd5"
+    },
+    "parallel": {
+      "mesh": "logos/parallel.mesh.json",
+      "color": "30343A",
+      "charm": "charms/parallel.mesh.json",
+      "charmTriangles": 7656,
+      "rgba": [
+        0.188235,
+        0.203922,
+        0.227451,
+        1
+      ],
+      "extraction": {
+        "method": "dark-symbol-on-light-background",
+        "sourceOpaqueCoverage": 0.787029,
+        "silhouetteBoundingBoxCoverage": 0.349627,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2152,
+      "contours": 8,
+      "source": "../ProviderIcons/parallel.png",
+      "sourceSHA256": "19b359c43294dccea08bb58fbc7db01fc8c2cdf1b691efa6ba7f041dbf0c0de7"
+    },
+    "perplexity": {
+      "mesh": "logos/perplexity.mesh.json",
+      "color": "22B8CD",
+      "charm": "charms/perplexity.mesh.json",
+      "charmTriangles": 4410,
+      "rgba": [
+        0.133333,
+        0.721569,
+        0.803922,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.324338,
+        "silhouetteBoundingBoxCoverage": 0.324338,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1124,
+      "contours": 7,
+      "source": "../ProviderIcons/perplexity.png",
+      "sourceSHA256": "d09a9f0c7e904f7ade7f7614e7a9c4f4eac50b3cd036a40c8d15fe22168e9900"
+    },
+    "pinecone": {
+      "mesh": "logos/pinecone.mesh.json",
+      "color": "435567",
+      "charm": "charms/pinecone.mesh.json",
+      "charmTriangles": 10164,
+      "rgba": [
+        0.262745,
+        0.333333,
+        0.403922,
+        1
+      ],
+      "extraction": {
+        "method": "light-symbol-on-brand-background",
+        "sourceOpaqueCoverage": 0.989597,
+        "silhouetteBoundingBoxCoverage": 0.251093,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 4004,
+      "contours": 10,
+      "source": "../ProviderIcons/pinecone.png",
+      "sourceSHA256": "fbcf7bc72ca17bb8473282e54c10177b3848071c6bcac52eef8fa2aa051b5b35"
+    },
+    "qdrant": {
+      "mesh": "logos/qdrant.mesh.json",
+      "color": "DC244C",
+      "charm": "charms/qdrant.mesh.json",
+      "charmTriangles": 2212,
+      "rgba": [
+        0.862745,
+        0.141176,
+        0.298039,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.565412,
+        "silhouetteBoundingBoxCoverage": 0.565412,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 520,
+      "contours": 2,
+      "source": "../ProviderIcons/qdrant.png",
+      "sourceSHA256": "58174c03668aad6a8d4a4d625f0063e14ba6fcfa838dbba143fcaeac54b1b23a"
+    },
+    "qwen": {
+      "mesh": "logos/qwen.mesh.json",
+      "color": "6A54F0",
+      "charm": "charms/qwen.mesh.json",
+      "charmTriangles": 1140,
+      "rgba": [
+        0.415686,
+        0.329412,
+        0.941176,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.360173,
+        "silhouetteBoundingBoxCoverage": 0.360173,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 992,
+      "contours": 3,
+      "source": "../ProviderIcons/qwen.png",
+      "sourceSHA256": "de9bc7e285164e0d284a7b9555511c7f7767af7699d6272b3b67b376eeddbfb3"
+    },
+    "replicate": {
+      "mesh": "logos/replicate.mesh.json",
+      "color": "415A68",
+      "charm": "charms/replicate.mesh.json",
+      "charmTriangles": 2192,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.51618,
+        "silhouetteBoundingBoxCoverage": 0.51618,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 480,
+      "contours": 3,
+      "source": "../ProviderIcons/replicate.png",
+      "sourceSHA256": "4449e7956b672dd0019c70e112afed7535684ca20dc5a7d0f98cdc2da68ec463"
+    },
+    "resend": {
+      "mesh": "logos/resend.mesh.json",
+      "color": "415A68",
+      "charm": "charms/resend.mesh.json",
+      "charmTriangles": 1860,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.412064,
+        "silhouetteBoundingBoxCoverage": 0.412064,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 668,
+      "contours": 1,
+      "source": "../ProviderIcons/resend.png",
+      "sourceSHA256": "03b08b9c0fc59bddd3c8e7f1b38dcbd809d0c49f024ef3d460ff48b6a0cd8a1a"
+    },
+    "runway": {
+      "mesh": "logos/runway.mesh.json",
+      "color": "415A68",
+      "charm": "charms/runway.mesh.json",
+      "charmTriangles": 3428,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.611978,
+        "silhouetteBoundingBoxCoverage": 0.611978,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1748,
+      "contours": 4,
+      "source": "../ProviderIcons/runway.png",
+      "sourceSHA256": "576d29766f41a385e5d37a746cf5b5626281265cf453242777573ebcbb3e908b"
+    },
+    "sendgrid": {
+      "mesh": "logos/sendgrid.mesh.json",
+      "color": "00B2E2",
+      "charm": "charms/sendgrid.mesh.json",
+      "charmTriangles": 1368,
+      "rgba": [
+        0.0,
+        0.698039,
+        0.886275,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.776882,
+        "silhouetteBoundingBoxCoverage": 0.776882,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 224,
+      "contours": 1,
+      "source": "../ProviderIcons/sendgrid.png",
+      "sourceSHA256": "179a722e1757275eca28b6ed98a5de506a0b7a2a53c60d78b2273141cf783b33"
+    },
+    "sentry": {
+      "mesh": "logos/sentry.mesh.json",
+      "color": "362D59",
+      "charm": "charms/sentry.mesh.json",
+      "charmTriangles": 3816,
+      "rgba": [
+        0.211765,
+        0.176471,
+        0.34902,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.332407,
+        "silhouetteBoundingBoxCoverage": 0.332407,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1628,
+      "contours": 1,
+      "source": "../ProviderIcons/sentry.png",
+      "sourceSHA256": "bf5ce683e172790d21888c849289bc3a323c87ea2f653006f149a4d0f2150529"
+    },
+    "serper": {
+      "mesh": "logos/serper.mesh.json",
+      "color": "90CDF4",
+      "charm": "charms/serper.mesh.json",
+      "charmTriangles": 4488,
+      "rgba": [
+        0.564706,
+        0.803922,
+        0.956863,
+        1
+      ],
+      "extraction": {
+        "method": "colored-symbol-on-white-background",
+        "sourceOpaqueCoverage": 1.0,
+        "silhouetteBoundingBoxCoverage": 0.3234,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2612,
+      "contours": 3,
+      "source": "../ProviderIcons/serper.png",
+      "sourceSHA256": "cdad247b02c9798b3d656d21d6e2d40d32752954e48ca8ad18f23371e48b8fd9"
+    },
+    "siliconflow": {
+      "mesh": "logos/siliconflow.mesh.json",
+      "color": "6E29F6",
+      "charm": "charms/siliconflow.mesh.json",
+      "charmTriangles": 1480,
+      "rgba": [
+        0.431373,
+        0.160784,
+        0.964706,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.562163,
+        "silhouetteBoundingBoxCoverage": 0.562163,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 500,
+      "contours": 1,
+      "source": "../ProviderIcons/siliconflow.png",
+      "sourceSHA256": "9685f75edf9bf83f7f7b6cba20dd97b8f6a108945957d38d6fddfdad2b07f2cf"
+    },
+    "slack": {
+      "mesh": "logos/slack.mesh.json",
+      "color": "00B3FF",
+      "charm": "charms/slack.mesh.json",
+      "charmTriangles": 5132,
+      "rgba": [
+        0.0,
+        0.701961,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.513165,
+        "silhouetteBoundingBoxCoverage": 0.513165,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2560,
+      "contours": 8,
+      "source": "../ProviderIcons/slack.png",
+      "sourceSHA256": "9c4874b3d0b618e8973148c1eae66ebbe08e2b915506031a4380d16d135f3bcd"
+    },
+    "stability": {
+      "mesh": "logos/stability.mesh.json",
+      "color": "A272FF",
+      "charm": "charms/stability.mesh.json",
+      "charmTriangles": 3076,
+      "rgba": [
+        0.635294,
+        0.447059,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.41788,
+        "silhouetteBoundingBoxCoverage": 0.41788,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1552,
+      "contours": 2,
+      "source": "../ProviderIcons/stability.png",
+      "sourceSHA256": "27bde23f56ecf168e0a79673100fee9071fc44cd791b68000a046c68bd9c5648"
+    },
+    "stripe": {
+      "mesh": "logos/stripe.mesh.json",
+      "color": "635BFF",
+      "charm": "charms/stripe.mesh.json",
+      "charmTriangles": 2564,
+      "rgba": [
+        0.388235,
+        0.356863,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.678252,
+        "silhouetteBoundingBoxCoverage": 0.678252,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1172,
+      "contours": 1,
+      "source": "../ProviderIcons/stripe.png",
+      "sourceSHA256": "20d8fd1e8dca3e24df3024fc71cfc1c6528d7576aab49df5bb1ec62eefc2ec65"
+    },
+    "supabase": {
+      "mesh": "logos/supabase.mesh.json",
+      "color": "3FCF8E",
+      "charm": "charms/supabase.mesh.json",
+      "charmTriangles": 1576,
+      "rgba": [
+        0.247059,
+        0.811765,
+        0.556863,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.412273,
+        "silhouetteBoundingBoxCoverage": 0.412273,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 452,
+      "contours": 1,
+      "source": "../ProviderIcons/supabase.png",
+      "sourceSHA256": "7a3a342f9a2b454bf3374f215eefc817afd2e038b58e948352f0386a4caf6885"
+    },
+    "tavily": {
+      "mesh": "logos/tavily.mesh.json",
+      "color": "468BFF",
+      "charm": "charms/tavily.mesh.json",
+      "charmTriangles": 2992,
+      "rgba": [
+        0.27451,
+        0.545098,
+        1.0,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.291093,
+        "silhouetteBoundingBoxCoverage": 0.291093,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1176,
+      "contours": 3,
+      "source": "../ProviderIcons/tavily.png",
+      "sourceSHA256": "1a4116fb385fda744dfd624c2ec4a2fc8b8d7696c2a1349dcf1f01e7db41d8d2"
+    },
+    "together": {
+      "mesh": "logos/together.mesh.json",
+      "color": "EF2CC1",
+      "charm": "charms/together.mesh.json",
+      "charmTriangles": 4052,
+      "rgba": [
+        0.937255,
+        0.172549,
+        0.756863,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.618548,
+        "silhouetteBoundingBoxCoverage": 0.618548,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1788,
+      "contours": 5,
+      "source": "../ProviderIcons/together.png",
+      "sourceSHA256": "95d1ab53d7fc7c9556e2b0db39df2417e8c59ab348d5cda2c82ba38eb4366e2f"
+    },
+    "twilio": {
+      "mesh": "logos/twilio.mesh.json",
+      "color": "F22F46",
+      "charm": "charms/twilio.mesh.json",
+      "charmTriangles": 3372,
+      "rgba": [
+        0.94902,
+        0.184314,
+        0.27451,
+        1
+      ],
+      "extraction": {
+        "method": "light-symbol-on-brand-background",
+        "sourceOpaqueCoverage": 1.0,
+        "silhouetteBoundingBoxCoverage": 0.492383,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1916,
+      "contours": 6,
+      "source": "../ProviderIcons/twilio.png",
+      "sourceSHA256": "2829ffaec3c2429bb44751fbe840e42d4bb637025d82ccca826e44652ca494b5"
+    },
+    "weaviate": {
+      "mesh": "logos/weaviate.mesh.json",
+      "color": "DCD600",
+      "charm": "charms/weaviate.mesh.json",
+      "charmTriangles": 3944,
+      "rgba": [
+        0.862745,
+        0.839216,
+        0.0,
+        1
+      ],
+      "extraction": {
+        "method": "green-yellow-symbol-on-indigo-background",
+        "sourceOpaqueCoverage": 1.0,
+        "silhouetteBoundingBoxCoverage": 0.629692,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 1556,
+      "contours": 1,
+      "source": "../ProviderIcons/weaviate.png",
+      "sourceSHA256": "f3368b7d5a07f117506cd96d88e76951b671de9d2a6881ba661a480d46a8acb9"
+    },
+    "xai": {
+      "mesh": "logos/xai.mesh.json",
+      "color": "415A68",
+      "charm": "charms/xai.mesh.json",
+      "charmTriangles": 2896,
+      "rgba": [
+        0.254902,
+        0.352941,
+        0.407843,
+        1
+      ],
+      "extraction": {
+        "method": "alpha",
+        "sourceOpaqueCoverage": 0.23819,
+        "silhouetteBoundingBoxCoverage": 0.23819,
+        "samplingResolution": 640,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.8
+      },
+      "triangles": 1324,
+      "contours": 2,
+      "source": "../ProviderIcons/xai.png",
+      "sourceSHA256": "f10ec0b2322f9d65a973d3d48fcdc41270d8b123a5d36e2826dabf9dcefb0762"
+    },
+    "zep": {
+      "mesh": "logos/zep.mesh.json",
+      "color": "953BA9",
+      "charm": "charms/zep.mesh.json",
+      "charmTriangles": 4628,
+      "rgba": [
+        0.584314,
+        0.231373,
+        0.662745,
+        1
+      ],
+      "extraction": {
+        "method": "light-symbol-on-brand-background",
+        "sourceOpaqueCoverage": 0.995529,
+        "silhouetteBoundingBoxCoverage": 0.540402,
+        "samplingResolution": 512,
+        "tracing": "subpixel-isocontour",
+        "simplificationTolerancePixels": 0.64
+      },
+      "triangles": 2020,
+      "contours": 6,
+      "source": "../ProviderIcons/zep.png",
+      "sourceSHA256": "2aac44d281fdcaebd4aa15635cc90274e36b2505a1493c993df31bb199bbc708"
+    }
+  }
+}

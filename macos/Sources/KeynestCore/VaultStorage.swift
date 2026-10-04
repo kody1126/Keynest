@@ -14,7 +14,7 @@ public struct VaultStorage: Sendable {
     public let fileURL: URL
     private let directorySync: @Sendable (Int32) -> Int32
     private static let filename = "vault.keynest"
-    private static let upgradeBackupFilename = "vault-before-0.7.keynest"
+    private static let upgradeBackupFilename = "vault-before-0.10.keynest"
 
     public init(directory: URL) throws {
         try self.init(directory: directory, directorySync: { Darwin.fsync($0) })

@@ -3,3 +3,7 @@
 dist/
 *.keynest
 .DS_Store
+
+# Local Python bytecode from asset generation
+__pycache__/
+*.py[cod]
