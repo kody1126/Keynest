@@ -18,6 +18,7 @@ Thank you for contributing. The native app in `macos/` is the main product; the 
 cd macos
 bash scripts/run-checks.sh
 bash scripts/run-app-checks.sh
+bash scripts/run-keychain-checks.sh
 bash scripts/run-biometric-checks.sh --file-only
 
 # Legacy Web app, from repository root; Node.js 22+

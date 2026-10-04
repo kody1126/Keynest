@@ -22,6 +22,7 @@ Respect a later instruction to keep an update local or not push. Do not install 
 
 - Native core: `cd macos && bash scripts/run-checks.sh`
 - Native app model: `cd macos && bash scripts/run-app-checks.sh`
+- Decorative keychain motion (headless): `cd macos && bash scripts/run-keychain-checks.sh`
 - Biometric file boundaries only: `cd macos && bash scripts/run-biometric-checks.sh --file-only`
 - Legacy Web experiment: `npm test` (Node.js 22+)
 - Release: build/package scripts documented in `macos/README.md`; generated output stays ignored.

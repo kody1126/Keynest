@@ -4,7 +4,7 @@
 
 A native macOS app for collecting and managing API keys. Unlock your vault, find a provider on Home, and copy the key you need. Account labels, environments, and API hosts help distinguish multiple keys from the same provider. You can also organize keys by the tools that use them, and share one key across multiple tools.
 
-The current release is **0.8.2**. Home has a more compact card layout and keeps search at the top right. This experimental native Mac app retains the security fixes from 0.8.1 and uses SwiftUI and AppKit, with no Node.js, browser, or cloud account required. The distributed build targets Apple Silicon Macs running macOS 14 or later. The app currently has a Chinese interface.
+The current release is **0.9.0 (build 11)**. Home adds a large, draggable 3D keyring above the provider cards. Search stays at the top right. This experimental native Mac app retains the security fixes from 0.8.1 and uses SwiftUI and AppKit, with no Node.js, browser, or cloud account required. The distributed build targets Apple Silicon Macs running macOS 14 or later. The app currently has a Chinese interface.
 
 ## Open the app
 
@@ -14,7 +14,7 @@ Download a macOS package from [GitHub Releases](https://github.com/kody1126/Keyn
 open "$HOME/Applications/Keynest.app"
 ```
 
-The current disk image is `Keynest-0.8.2-arm64.dmg` ([download v0.8.2](https://github.com/kody1126/Keynest/releases/tag/v0.8.2)). It contains both `Keynest.app` and the separate `Keynest Demo.app`. Install both into `~/Applications` before opening them. The apps use local ad-hoc signatures; they are not signed with an Apple Developer ID or notarized by Apple.
+The current disk image is `Keynest-0.9.0-arm64.dmg` ([download v0.9.0](https://github.com/kody1126/Keynest/releases/tag/v0.9.0)). It contains both `Keynest.app` and the separate `Keynest Demo.app`. Install both into `~/Applications` before opening them. The apps use local ad-hoc signatures; they are not signed with an Apple Developer ID or notarized by Apple.
 
 On first launch, set a master password of at least **12 characters**. On Home, choose a provider, paste your key, and select **Save to Home (保存到首页)**. Presets fill in the name and a common API address; project-specific addresses must be entered as indicated. Expand the optional fields to add an account label or environment. **Full Editor… (完整编辑…)** also lets you add tags, notes, and tool associations. Subsequent unlocks open Home by default. There is no master-password recovery.
 
@@ -30,6 +30,8 @@ Demo data is stored separately from the regular vault in `~/Library/Application 
 
 ## Everyday use
 
+- **Interactive keyring:** The large display at the top of Home shows a keyring in silver and ice blue with multiple chains and OpenAI, Claude, and Gemini logo charms. Drag it and release to let it spring back. **Reset (复位)** restores its initial pose; **Collapse / Expand (收起 / 展开)** lets you hide or show it, and the app remembers your choice. Collapsing it brings the provider cards directly into view.
+- **Local decoration:** The scene uses native SceneKit rendering, makes no network requests, and does not receive, read, or store key data. It does not indicate provider connection status or manage credentials. It respects the system's Reduce Motion setting.
 - **Copy from Home:** Provider cards fit their content in a compact layout, reducing empty space between cards. Each key has its own Copy button. A card still shows up to two keys directly; use **View All (查看全部)** to explicitly choose from additional keys. Account labels, environments, and API hostnames help distinguish personal accounts, team accounts, and custom gateways.
 - **Home filters and search:** Search stays at the top right, alongside the compact header. Filter by **All / Models / Skills & Services / Favorites (全部 / 模型 / Skill 与服务 / 常用)**. Home searches provider names and aliases, key names, account labels, environments, tags, and associated tool names. It does not search secrets, URLs, or notes. The management view retains broader metadata search, including URLs and notes.
 - **Large catalogs:** Home initially shows up to 80 matching providers. Use **Show more providers (显示更多平台)** below the cards to expand the list. Search always covers the full vault; changing the query or scope returns to the top of the results.
@@ -76,7 +78,7 @@ Names, keys, tags, notes, and quota snapshots are encrypted together with **AES-
 
 Touch ID protects access to the vault through Secure Enclave access control tied to the currently enrolled fingerprints. Only a hardware-bound private-key representation and encrypted, wrapped unlock material are stored locally; failed authentication cannot decrypt the vault. See the [Touch ID implementation and verification notes](../research/touch-id-0.6.md).
 
-Version 0.8.2 retains payload version 3 from 0.7 and can read versions 1 and 2. The demo catalog revision remains 7. This update does not change the encryption format or repopulate demo data. The upgrade protection introduced in 0.7 still applies: before the first save of an older format, Keynest preserves the original encrypted bytes as `vault-before-0.7.keynest` in the same directory. Existing 0.5 upgrade backups are also retained. Versions 0.6 and earlier cannot read payload version 3; downgrading requires a pre-upgrade backup and the password used at that time. See [upgrades and compatibility](../macos/README.md#升级与兼容性).
+Version 0.9.0 retains payload version 3 from 0.7 and can read versions 1 and 2. The demo catalog revision remains 7. The decorative Home scene does not change the encryption format or repopulate demo data. The upgrade protection introduced in 0.7 still applies: before the first save of an older format, Keynest preserves the original encrypted bytes as `vault-before-0.7.keynest` in the same directory. Existing 0.5 upgrade backups are also retained. Versions 0.6 and earlier cannot read payload version 3; downgrading requires a pre-upgrade backup and the password used at that time. See [upgrades and compatibility](../macos/README.md#升级与兼容性).
 
 Version 0.8.1 fixes imports committing after cancellation, clipboard ownership races, hard-link file permission handling, malformed URLs, a crash involving certain slices of unlock data, and inconsistencies between in-memory state and encrypted files after disk synchronization failures. Inactivity locking now uses a monotonic clock, and both apps enable Hardened Runtime. Existing passwords remain usable; newly created or changed passwords also have a maximum UTF-8 size of 16 KiB. See the [security review and fixes](../research/security-review-0.8.1.md).
 
@@ -106,13 +108,14 @@ The build reads [AppIcon.selection](../macos/Resources/AppIcon.selection) to cho
 - [0.8.1 security review and fixes](../research/security-review-0.8.1.md)
 - [Native app verification record](../macos/verification.md)
 
-The native source is in `macos/`, with no third-party Swift Package dependencies. You can check, build, and package it with the macOS Command Line Tools; a full Xcode installation is not required:
+The native source is in `macos/`, using Apple's SwiftUI, AppKit, and SceneKit frameworks with no third-party Swift Package dependencies. You can check, build, and package it with the macOS Command Line Tools; a full Xcode installation is not required:
 
 ```sh
 git clone https://github.com/kody1126/Keynest.git
 cd Keynest/macos
 bash scripts/run-checks.sh
 bash scripts/run-app-checks.sh
+bash scripts/run-keychain-checks.sh
 zsh scripts/build-app.sh
 zsh scripts/build-demo-app.sh
 zsh scripts/package-app.sh

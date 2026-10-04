@@ -15,7 +15,7 @@ ditto "$build_root/Keynest Demo.app" "$stage_dir/Keynest Demo.app"
 cp "$project_dir/../LICENSE" "$stage_dir/LICENSE"
 cp "$project_dir/../THIRD_PARTY_NOTICES.md" "$stage_dir/THIRD_PARTY_NOTICES.md"
 cat > "$stage_dir/安装说明.txt" <<'TEXT'
-Keynest 0.8.2 — 本地 API、Skill 与 Agent 凭据收藏
+Keynest 0.9.0 — 本地 API、Skill 与 Agent 凭据收藏
 
 统一安装到个人的 ~/Applications 文件夹，不要直接从镜像运行。
 在 Finder 中选择「前往文件夹…」，输入 ~/Applications，再复制两个 App。
@@ -36,7 +36,7 @@ Keynest Demo.app 是独立演示版，测试密码：Keynest-Demo-2026。
 没有云同步、遥测或账户。额度查询需手动开启并点击，只访问所选平台官方接口。
 TEXT
 cat > "$stage_dir/INSTALL.txt" <<'TEXT'
-Keynest 0.8.2 — local API, Skill and Agent credential manager
+Keynest 0.9.0 — local API, Skill and Agent credential manager
 
 Requires macOS 14+ on the processor architecture named in the DMG filename.
 Copy Keynest.app and, optionally, Keynest Demo.app to ~/Applications.

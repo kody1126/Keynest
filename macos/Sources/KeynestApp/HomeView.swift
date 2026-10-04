@@ -7,6 +7,7 @@ import KeynestCore
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
     @FocusState private var searchFocused: Bool
+    @AppStorage("keynest.home.showKeychain") private var showsKeychain = true
     @State private var visibleProviderLimit = 80
     @State private var paginationQuery = ""
     @State private var paginationScope = HomeScope.all
@@ -39,6 +40,7 @@ struct HomeView: View {
                     .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 350)
                     .accessibilityIdentifier("keynest.home.scope")
                     Spacer(minLength: 0)
+                    if !showsKeychain { showKeychainButton }
                     Text("\(groups.count) 个平台 · \(groups.reduce(0) { $0 + $1.entries.count }) 把密钥")
                         .font(.caption).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
                 }
@@ -49,6 +51,11 @@ struct HomeView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
+                        if showsKeychain {
+                            HomeKeychainShowcase { showsKeychain = false }
+                        } else if model.entries.isEmpty {
+                            showKeychainButton
+                        }
                         if !groups.isEmpty {
                             HomeCardLayout {
                                 ForEach(groups.prefix(visibleLimit)) { group in HomeProviderCard(group: group) }
@@ -123,6 +130,17 @@ struct HomeView: View {
         visibleProviderLimit = providerBatchSize
         paginationQuery = model.searchText
         paginationScope = model.homeScope
+    }
+
+    private var showKeychainButton: some View {
+        Button { showsKeychain = true } label: {
+            Label("钥匙串", systemImage: "link")
+                .font(.caption)
+        }
+        .buttonStyle(.borderless)
+        .help("展开钥匙串")
+        .accessibilityLabel("展开钥匙串")
+        .accessibilityIdentifier("keynest.home.keychain.expand")
     }
 
     private var header: some View {

@@ -1,6 +1,6 @@
 # Keynest for macOS
 
-当前版本 **0.8.2** 优化首页卡片排列和顶部搜索，保留 0.8.1 的错误与安全边界修复，见 [检查报告](../research/security-review-0.8.1.md)。
+当前版本 **0.9.0（build 11）** 在首页加入可拖动的大号立体钥匙串，保留平台卡片和右上角搜索。0.8.1 的错误与安全边界修复继续保留，见 [检查报告](../research/security-review-0.8.1.md)。
 
 Keynest 0.8 增加日常取用的首页：解锁后按平台找到密钥，每把单独复制；选平台、粘贴密钥即可快速保存。原有三栏管理页、61 个平台预设、25 个 Skill / Agent 工具模板和 Touch ID 解锁继续保留，一个工具可使用多把密钥，一把密钥也可供多个工具使用。应用采用原生 SwiftUI / AppKit、系统字体、SF Symbols 和原生编辑窗口。首页说明见 [0.8 首页与快速添加](../research/home-usability-0.8.md)，早期设计取舍见 [macOS 设计参考](../research/macos-design-references.md)及 [0.5 产品方向](../research/product-direction-0.5.md)。当前暂定 C2「冰蓝通透」钥匙扣图标，以静态 ICNS 构建；全部 12 个样式保留在 [图标样式库](Resources/design/README.md)，[图标设计记录](../research/keynest-icon-design.md)包含设计依据。
 
@@ -8,7 +8,7 @@ Keynest 0.8 增加日常取用的首页：解锁后按平台找到密钥，每�
 
 ## 安装与首次使用
 
-本机正式应用位置为 `~/Applications/Keynest.app`，独立演示版为 `~/Applications/Keynest Demo.app`。打包后的分发文件位于 `macos/dist/Keynest-0.8.2-arm64.dmg`，同时包含两个 App；统一安装到 `~/Applications` 后打开，不从 DMG 或构建目录运行。
+本机正式应用位置为 `~/Applications/Keynest.app`，独立演示版为 `~/Applications/Keynest Demo.app`。打包后的分发文件位于 `macos/dist/Keynest-0.9.0-arm64.dmg`，同时包含两个 App；统一安装到 `~/Applications` 后打开，不从 DMG 或构建目录运行。
 
 应用启用 **Hardened Runtime**，采用 **ad-hoc 本地签名**，未使用 Apple Developer ID 签名，也未经过 Apple 公证。这适合本机实验构建，不等于经 Apple 认证的分发版本。
 
@@ -37,7 +37,7 @@ Keynest 0.8 增加日常取用的首页：解锁后按平台找到密钥，每�
 
 首次启动且演示库不存在时，会自动创建 **34 把虚构密钥和 10 个工具**。样例覆盖大模型、搜索抓取、图像、语音、地图天气、开发、邮件，以及 Agent 浏览器、记忆、知识库和追踪服务，并展示同平台多个账号、正式/开发/测试环境，以及共享密钥。所有样例密钥均以 `demo-only-not-a-real-key-` 开头，不能调用真实 API。
 
-旧演示库按独立目录修订号增补新样例，只有加密保存成功后才记录完成。用户修改过的条目保持原样，已经删除的旧样例不重新创建；完成升级后也不会每次启动都重新填充。0.8.2 的演示目录修订号仍为 7，不因首页更新增加或重填样例，测试密码不变。旧载荷版本 1 仍先按 0.5 规则迁移，正式库不填充演示数据。
+旧演示库按独立目录修订号增补新样例，只有加密保存成功后才记录完成。用户修改过的条目保持原样，已经删除的旧样例不重新创建；完成升级后也不会每次启动都重新填充。0.9.0 的演示目录修订号仍为 7，不因首页更新增加或重填样例，测试密码不变。旧载荷版本 1 仍先按 0.5 规则迁移，正式库不填充演示数据。
 
 | 项目 | 正式版 | 演示版 |
 | --- | --- | --- |
@@ -53,6 +53,10 @@ Keynest 0.8 增加日常取用的首页：解锁后按平台找到密钥，每�
 **演示密码公开，即使文件经过加密也不适合存放真实凭据。** 演示界面有常驻提醒。官网及自定义来源链接仍可手动交给默认浏览器打开；它不调用模型 API，但不是完全离线模式。
 
 ## 首页日常使用
+
+首页上方是银白冰蓝的多链钥匙串大展示区，配有 OpenAI、Claude、Gemini 图标吊牌。拖动后松手会回弹；「复位」恢复初始展示姿态。「收起 / 展开」可调整展示区，应用会记住这个选择，收起后可直接使用下方的平台卡片。
+
+这个装饰场景使用原生 SceneKit 在本机渲染，不联网，不接收、读取或保存密钥数据，也不代表服务商连接状态。场景遵循系统「减少动态效果」设置；它不承担密钥存储或管理功能。
 
 解锁后默认显示首页。已保存的密钥按平台组成卡片，卡片按各自内容高度紧凑排列，减少大块留白；顶部保留标题和右上角搜索框。每张卡片仍直接显示最多 2 把密钥，每行都有自己的「复制」按钮，复制成功后显示「已复制」。同平台超过 2 把时，点击「查看全部」打开可滚动的密钥列表，再明确选择需要的那一把。
 
@@ -172,7 +176,7 @@ Web 0.1 实验使用另一种加密格式；其 `vault.json` 不能作为原生 
 
 ## 升级与兼容性
 
-0.8.2 沿用数据载荷版本 3 和演示目录修订号 7，首页及搜索调整不改变存储格式。以下为 0.7 引入、在 0.8.2 继续适用的迁移规则。
+0.9.0 沿用数据载荷版本 3 和演示目录修订号 7，首页装饰场景、卡片及搜索调整不改变存储格式。以下为 0.7 引入、在 0.9.0 继续适用的迁移规则。
 
 0.7 的载荷版本 3 新增可选的工具模板标识，以便保留工具图标。当前版本可读取旧版 1 / 2，保留密钥、来源、备注、关联、账号、环境和工具。自定义工具没有模板标识时继续正常使用；未知模板标识保留，显示通用图标。
 
@@ -241,13 +245,14 @@ open "$HOME/Applications/Keynest.app"
 
 ## 从源码构建
 
-需要 macOS 14+ 和可用的 Swift 5.9 以上 Apple Command Line Tools 工具链；无需安装完整 Xcode。项目使用系统 SwiftUI、AppKit、CryptoKit、CommonCrypto 与 Security，不需要下载第三方 Swift 包。检查脚本使用本机 Python 3 发现测试方法，打包使用系统 `codesign`、`iconutil` 和 `hdiutil`。
+需要 macOS 14+ 和可用的 Swift 5.9 以上 Apple Command Line Tools 工具链；无需安装完整 Xcode。项目使用系统 SwiftUI、AppKit、SceneKit、CryptoKit、CommonCrypto 与 Security，不需要下载第三方 Swift 包。检查脚本使用本机 Python 3 发现测试方法，打包使用系统 `codesign`、`iconutil` 和 `hdiutil`。
 
 在本目录执行：
 
 ```sh
 bash scripts/run-checks.sh
 bash scripts/run-app-checks.sh
+bash scripts/run-keychain-checks.sh
 zsh scripts/build-app.sh
 zsh scripts/build-demo-app.sh
 zsh scripts/package-app.sh
@@ -265,8 +270,8 @@ macos/dist/apps.noindex/Keynest.app
 `package-app.sh` 会先调用上述两个构建脚本，将正式 App 和 Demo App 一起放入与本机架构匹配的 DMG，使用 `hdiutil verify` 校验，并生成 `.sha256` 校验文件。Apple Silicon 上的产物为：
 
 ```text
-macos/dist/Keynest-0.8.2-arm64.dmg
-macos/dist/Keynest-0.8.2-arm64.dmg.sha256
+macos/dist/Keynest-0.9.0-arm64.dmg
+macos/dist/Keynest-0.9.0-arm64.dmg.sha256
 ```
 
 中间 App 和打包临时副本统一位于 `apps.noindex/`，`dist/` 根目录用于 DMG 等交付文件。不要直接打开这些构建副本，以减少系统中同名 App 的重复入口；安装后只从 `~/Applications` 启动：
@@ -280,6 +285,8 @@ open "$HOME/Applications/Keynest.app"
 本机仅安装 Command Line Tools，缺少 XCTest，直接运行 `swift test` 无法完成。`run-checks.sh` 使用独立 Swift 断言运行器执行 `Tests/KeynestCoreTests/` 中的原有测试方法，不改写断言与测试体，也不访问正式密钥库或真实服务商账号。运行器先验证失败断言确实产生非零退出码，再执行全部测试。各版本核心逻辑、数据升级、首页分组搜索、构建及 App 实机交互的检查范围与结果统一以 [验证记录](verification.md) 为准。
 
 `run-app-checks.sh` 在一次性 `/private/tmp` 虚构库中对真实 AppModel 和 Core 执行集成检查，涵盖创建、工具关联、检索、保存、锁定与重新解锁，并用替身检查 Touch ID 状态与取消边界；不访问正式库、网络、剪贴板或真实指纹凭据。各版本实际通过的检查与数量记录在上述验证记录中。
+
+`run-keychain-checks.sh` 编译真实场景源码，仅执行纯运动状态的无窗口检查，覆盖拖拽边界、释放速度、阻尼收敛和减少动态效果；不创建渲染器或读取密钥。视觉效果和真实窗口生命周期仍需实机检查。
 
 仅检查指纹解锁资料的文件保护、不查询传感器或创建 Secure Enclave 密钥，可运行：
 

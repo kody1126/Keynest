@@ -32,6 +32,8 @@ jobs:
         run: bash macos/scripts/run-checks.sh
       - name: Run isolated AppModel checks
         run: bash macos/scripts/run-app-checks.sh
+      - name: Run keychain motion checks without a display
+        run: bash macos/scripts/run-keychain-checks.sh
       - name: Run biometric filesystem checks without hardware access
         run: bash macos/scripts/run-biometric-checks.sh --file-only
 
