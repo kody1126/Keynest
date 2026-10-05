@@ -6,14 +6,14 @@
 <p align="center">本地加密保存 · Touch ID 解锁 · 找到平台，直接复制</p>
 
 <p align="center">
-  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.11.0"><img src="https://img.shields.io/badge/preview-v0.11.0-5b9bd5" alt="预览版 v0.11.0"></a>
+  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.11.1"><img src="https://img.shields.io/badge/preview-v0.11.1-5b9bd5" alt="预览版 v0.11.1"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-333333" alt="macOS 14 或更新版本">
   <a href="https://github.com/kody1126/Keynest/actions/workflows/checks.yml"><img src="https://github.com/kody1126/Keynest/actions/workflows/checks.yml/badge.svg?branch=main" alt="构建与测试"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-MIT-38956e" alt="代码许可证 MIT"></a>
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.0/Keynest-0.11.0-arm64.dmg">下载 macOS 版</a></strong>
+  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg">下载 macOS 版</a></strong>
   · <a href="README.en.md">English</a>
   · <a href="macos/README.md">使用文档</a>
   · <a href="https://github.com/kody1126/Keynest/issues">反馈问题</a>
@@ -33,7 +33,7 @@
 - **打开就能取用** — 首页卡片按内容高度紧凑排列，右上角搜索，支持常用筛选；无需先进入编辑表单。
 - **点击挂件，直接复制** — 「钥匙串」保留立体品牌珐琅挂件与六色玻璃钥匙，移除底部平台按钮。为挂件选定密钥后，点击即可复制；同平台多把密钥时，先按名称、账号与环境选择，避免拿错。
 - **定制常用入口** — 点击金属挂扣或「定制」，从 61 个品牌及已有自定义平台中选择 0–8 个挂件并调整顺序；拖动回弹、复位和收起仍然可用。
-- **按自己的顺序排首页** — 「[编辑布局](docs/images/home-layout.jpg)」时直接拖动平台卡片，或用前移、后移按钮调整，再保存；支持取消和恢复默认。自动挂件会跟随首页前 3 个平台。
+- **按自己的顺序排首页** — 「[编辑布局](docs/images/home-layout.jpg)」时整张卡片连同图标与内容跟随拖动，也可用前移、后移按钮调整，再保存；支持取消和恢复默认。自动挂件会跟随首页前 3 个平台。
 - **多把密钥，也分得清** — 用账号、环境和 API 地址区分个人、团队、开发与正式用途。
 - **常见平台，选好再粘贴** — 内置 61 个服务商预设，覆盖 OpenAI、Claude、Gemini、DeepSeek、Cloudflare、GitHub 等，附品牌图标和官方 API 入口。
 - **按工具整理一组密钥** — 25 个工具与 Skill 模板，覆盖 Cursor、Cline、Dify、n8n 等；一把密钥可供多个工具关联使用。
@@ -55,7 +55,7 @@
 
 ## 下载与开始使用
 
-**[下载 Keynest 0.11.0 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.0/Keynest-0.11.0-arm64.dmg)** · [发布说明与 SHA-256 校验文件](https://github.com/kody1126/Keynest/releases/tag/v0.11.0)
+**[下载 Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg)** · [发布说明与 SHA-256 校验文件](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
 
 需要 **macOS 14 或更新版本**。当前提供 Apple Silicon 安装包；Intel Mac 可尝试从源码构建，但尚未验证。
 
@@ -81,7 +81,7 @@ Demo 与正式密钥库分开存储，不发起额度查询，也不支持导入
 
 - 不需要云端账户，不主动上传或同步密钥库。
 - 闲置 10 分钟或系统休眠后自动锁定。
-- 复制时禁用通用剪贴板同步；30 秒后清除本次复制内容，不覆盖后来复制的其他内容。第三方剪贴板工具仍可能保存副本。
+- 复制时禁用通用剪贴板同步；60 秒后清除本次复制内容，不覆盖后来复制的其他内容。第三方剪贴板工具仍可能保存副本。
 - 额度查询需主动开启并手动刷新。目前支持 DeepSeek、硅基流动和 OpenRouter 的部分余额或用量信息，**不提供全平台实时额度同步**。
 
 本项目尚未经过独立安全审计。磁盘加密不能保证电脑已被恶意软件控制时，解锁中的内存、屏幕或剪贴板仍然安全。

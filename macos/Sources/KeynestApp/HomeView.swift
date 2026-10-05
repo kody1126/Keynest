@@ -157,6 +157,9 @@ struct HomeView: View {
                 .onPreferenceChange(HomeLayoutCardFrames.self) { frames in
                     layoutDrag.updateCardFrames(frames)
                 }
+                .onPreferenceChange(HomeLayoutCardBodyFrames.self) { frames in
+                    layoutDrag.updateCardBodyFrames(frames)
+                }
                 .onChange(of: model.searchText) { _, _ in
                     guard !editingLayout else { return }
                     resetPagination()

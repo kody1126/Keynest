@@ -28,6 +28,32 @@ private final class FakePasteboard: VaultPasteboard {
     func simulateExternalCopy(_ value: String) { self.value = value; changeCount += 1 }
 }
 
+/// Advances only when a check requests it. Cancellation intentionally leaves
+/// the waiter queued, exercising late callbacks from an older copy generation.
+@MainActor private final class FakeClipboardClock {
+    private struct Waiter {
+        let deadline: Duration
+        let continuation: CheckedContinuation<Void, Never>
+    }
+    private var elapsed = Duration.zero
+    private var waiters: [Waiter] = []
+    private(set) var scheduledCount = 0
+
+    func sleep(for duration: Duration) async throws {
+        scheduledCount += 1
+        await withCheckedContinuation { continuation in
+            waiters.append(Waiter(deadline: elapsed + duration, continuation: continuation))
+        }
+    }
+
+    func advance(by duration: Duration) {
+        elapsed += duration
+        let ready = waiters.filter { $0.deadline <= elapsed }
+        waiters.removeAll { $0.deadline <= elapsed }
+        for waiter in ready { waiter.continuation.resume() }
+    }
+}
+
 private final class DirectorySyncControl: @unchecked Sendable {
     private let mutex = NSLock()
     private var shouldFail = false
@@ -103,6 +129,57 @@ private final class AppChecks {
         return try JSONSerialization.data(withJSONObject: envelope)
     }
 
+    private func checkClipboardExpiry() async throws {
+        let pasteboard = FakePasteboard()
+        let clock = FakeClipboardClock()
+        let clipboard = SensitiveClipboard(pasteboard: pasteboard, sleep: { try await clock.sleep(for: $0) })
+        func awaitScheduled(_ count: Int) async throws {
+            for _ in 0..<1000 {
+                if clock.scheduledCount >= count { break }
+                await Task.yield()
+            }
+            try expect(clock.scheduledCount == count, "Each successful copy must schedule one expiry")
+        }
+        func settleCallbacks() async {
+            for _ in 0..<20 { await Task.yield() }
+        }
+
+        try expect(clipboard.copy("fake-only-sixty-second-copy"), "The expiry fixture must publish successfully")
+        try await awaitScheduled(1)
+        clock.advance(by: .seconds(30)); await settleCallbacks()
+        try expect(pasteboard.value == "fake-only-sixty-second-copy", "The clipboard must no longer expire at 30 seconds")
+        clock.advance(by: .seconds(29)); await settleCallbacks()
+        try expect(pasteboard.value == "fake-only-sixty-second-copy", "Owned content must remain through 59 seconds")
+        clock.advance(by: .seconds(1)); await settleCallbacks()
+        try expect(pasteboard.value == nil, "Owned content must clear at 60 elapsed seconds")
+
+        try expect(clipboard.copy("fake-only-older-generation"), "The first generation must publish")
+        try await awaitScheduled(2)
+        clock.advance(by: .seconds(59))
+        try expect(clipboard.copy("fake-only-newer-generation"), "The newer generation must publish")
+        try await awaitScheduled(3)
+        clock.advance(by: .seconds(1)); await settleCallbacks()
+        try expect(pasteboard.value == "fake-only-newer-generation", "A late cancelled expiry must not clear the new copy")
+        clock.advance(by: .seconds(58)); await settleCallbacks()
+        try expect(pasteboard.value == "fake-only-newer-generation", "A new copy receives its own full 60-second lifetime")
+        clock.advance(by: .seconds(1)); await settleCallbacks()
+        try expect(pasteboard.value == nil, "The newer generation clears at its own deadline")
+
+        try expect(clipboard.copy("fake-only-before-external-copy"), "The ownership fixture must publish")
+        try await awaitScheduled(4)
+        pasteboard.simulateExternalCopy("unrelated external clipboard fixture")
+        clock.advance(by: .seconds(60)); await settleCallbacks()
+        try expect(pasteboard.value == "unrelated external clipboard fixture", "Expiry must preserve another writer's later copy")
+
+        try expect(clipboard.copy("fake-only-before-lock"), "The lock fixture must publish")
+        try await awaitScheduled(5)
+        clipboard.clearOwnedContents()
+        try expect(pasteboard.value == nil, "Lock cleanup must still clear an owned copy immediately")
+        pasteboard.simulateExternalCopy("external fixture after lock")
+        clock.advance(by: .seconds(60)); await settleCallbacks()
+        try expect(pasteboard.value == "external fixture after lock", "A cancelled post-lock expiry must not clear external content")
+    }
+
     func run() async throws {
         // Refuse to initialize AppModel until a fresh, explicitly supplied
         // /private/tmp vault is proven. Never permit its default data directory.
@@ -130,6 +207,8 @@ private final class AppChecks {
         let initialFiles = try FileManager.default.contentsOfDirectory(atPath: path)
         try expect(initialFiles.isEmpty, "Temporary vault directory must be empty")
         try expect(Bundle.main.bundleIdentifier != "local.keynest.demo", "Never initialize a demo or real bundle profile")
+
+        try await checkClipboardExpiry()
 
         let biometric = FakeBiometricAccess()
         let pasteboard = FakePasteboard()
@@ -658,6 +737,7 @@ private final class AppChecks {
                    pasteboard.types.contains(.init("org.nspasteboard.TransientType")),
                    "Sensitive markers must accompany the secret in the same publication")
         try expect(model.copyFeedback == .secret(imported.id), "Successful copy should identify the actual record")
+        try expect(model.toast == "已复制密钥，60 秒后清除本次复制内容", "Copy feedback must describe the 60-second expiry")
         model.lock()
         try expect(pasteboard.value == nil && model.copyFeedback == nil, "Lock must clear an owned copied secret")
         model.copySecret(imported)

@@ -533,7 +533,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
             errorMessage = "无法写入剪贴板，请重试。"
             return false
         }
-        activity(); notify("已复制\(label)，30 秒后清除本次复制内容")
+        activity(); notify("已复制\(label)，60 秒后清除本次复制内容")
         return true
     }
     func syncQuota(_ entry: SecretEntry) async {

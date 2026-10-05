@@ -585,7 +585,7 @@ private struct EntryDetailView: View {
                     LabeledContent("账号", value: entry.accountLabel.isEmpty ? "未标注" : entry.accountLabel)
                     LabeledContent("环境", value: entry.environment.isEmpty ? "未标注" : entry.environment)
                 } header: { Text("本地凭据") } footer: {
-                    Text(secretVisible ? "密钥显示 20 秒后自动隐藏。" : "复制后 30 秒清除本次剪贴板内容；你新复制的其他内容会保留。")
+                    Text(secretVisible ? "密钥显示 20 秒后自动隐藏。" : "复制后 60 秒清除本次剪贴板内容；你新复制的其他内容会保留。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 .accessibilityElement(children: .contain)

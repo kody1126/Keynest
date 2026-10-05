@@ -106,7 +106,7 @@ private struct SettingsView: View {
                 }
                 LabeledContent("存储方式", value: "本机加密文件 · 无云端账户")
                 LabeledContent("自动锁定", value: "闲置 10 分钟或系统休眠")
-                LabeledContent("剪贴板", value: "30 秒后清除本次复制内容")
+                LabeledContent("剪贴板", value: "60 秒后清除本次复制内容")
                 LabeledContent("密钥显示", value: "20 秒后自动隐藏")
             }
             Section("密钥库") {
@@ -117,7 +117,7 @@ private struct SettingsView: View {
                 }
             }
             Section {
-                Text("Keynest 0.11.0 · 本地实验版\n仅在你点击额度查询时访问对应平台的官方接口。尚未经过独立安全审计。").font(.footnote).foregroundStyle(.secondary)
+                Text("Keynest 0.11.1 · 本地实验版\n仅在你点击额度查询时访问对应平台的官方接口。尚未经过独立安全审计。").font(.footnote).foregroundStyle(.secondary)
             }
         }.formStyle(.grouped).padding(12).frame(width: 520, height: 510)
             .task { await model.refreshBiometricStatus() }

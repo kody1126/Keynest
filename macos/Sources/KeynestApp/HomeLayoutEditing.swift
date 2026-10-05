@@ -13,6 +13,13 @@ struct HomeLayoutCardFrames: PreferenceKey {
     }
 }
 
+struct HomeLayoutCardBodyFrames: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
 /// A window-local gesture session. No system drag session or pasteboard is used.
 /// Both the edit nonce and gesture nonce must match before a release can commit.
 @MainActor final class HomeLayoutDragSession: ObservableObject {
@@ -27,16 +34,22 @@ struct HomeLayoutCardFrames: PreferenceKey {
     private struct Target { weak var view: HomeCardDragView? }
     @Published private(set) var draggedID: String?
     @Published private(set) var destination: Destination?
+    @Published private(set) var settledID: String?
     private var editingNonce: UUID?
     private var dragToken: Token?
     private var allowedIDs = Set<String>()
     private var targets: [String: Target] = [:]
     private var cardFrames: [String: CGRect] = [:]
+    private var cardBodyFrames: [String: CGRect] = [:]
     private var framesAreCurrent = true
     private weak var viewport: HomeLayoutViewportView?
     private weak var sourceView: HomeCardDragView?
     private weak var sourceWindow: NSWindow?
     private var preview: HomeLayoutDragPreviewView?
+    private var previewGrip = CGPoint.zero
+    private var previewScale: CGFloat = 1
+    private var feedbackTask: Task<Void, Never>?
+    private var feedbackNonce = UUID()
 
     func activate(ids: [String]) {
         clear()
@@ -57,6 +70,12 @@ struct HomeLayoutCardFrames: PreferenceKey {
         framesAreCurrent = true
     }
 
+    func updateCardBodyFrames(_ frames: [String: CGRect]) {
+        cardBodyFrames = frames.filter { _, frame in
+            !frame.isNull && !frame.isInfinite && frame.width > 0 && frame.height > 0
+        }
+    }
+
     fileprivate func setViewport(_ view: HomeLayoutViewportView) { viewport = view }
 
     fileprivate func removeViewport(_ view: HomeLayoutViewportView) {
@@ -73,14 +92,29 @@ struct HomeLayoutCardFrames: PreferenceKey {
         if sourceView === view { endDrag() }
     }
 
-    fileprivate func beginDrag(id: String, title: String, view: HomeCardDragView,
-                               point: NSPoint) -> Token? {
+    fileprivate func beginDrag(id: String, presentation: HomeCardPresentation,
+                               colorScheme: ColorScheme, reduceMotion: Bool,
+                               view: HomeCardDragView, pressedAt: NSPoint, point: NSPoint) -> Token? {
         guard let editingNonce, allowedIDs.contains(id), targets[id]?.view === view,
-              let window = view.window, let content = window.contentView else { return nil }
+              let window = view.window, let content = window.contentView,
+              let viewport, viewport.window === window, let cardFrame = cardBodyFrames[id] else { return nil }
         endDrag()
+        // Render only the shared, metadata-only card, at its measured size and
+        // display density. This does not capture a window or retain a vault/model.
+        let renderer = ImageRenderer(content: HomeCardDragPresentation(presentation: presentation)
+            .frame(width: cardFrame.width, height: cardFrame.height, alignment: .topLeading)
+            .environment(\.colorScheme, colorScheme))
+        renderer.scale = window.backingScaleFactor
+        var renderedImage: NSImage?
+        view.effectiveAppearance.performAsCurrentDrawingAppearance { renderedImage = renderer.nsImage }
+        guard let image = renderedImage else { return nil }
         let token = Token(editing: editingNonce, gesture: UUID())
         dragToken = token; draggedID = id; sourceView = view; sourceWindow = window
-        let preview = HomeLayoutDragPreviewView(title: title)
+        let initialPoint = viewport.convert(pressedAt, from: nil)
+        previewGrip = CGPoint(x: initialPoint.x - cardFrame.minX, y: initialPoint.y - cardFrame.minY)
+        previewScale = reduceMotion ? 1 : 1.015
+        let preview = HomeLayoutDragPreviewView(image: image, size: cardFrame.size,
+                                               scale: previewScale, reduceMotion: reduceMotion)
         self.preview = preview
         content.addSubview(preview, positioned: .above, relativeTo: nil)
         updateDrag(token: token, point: point, window: window)
@@ -96,12 +130,13 @@ struct HomeLayoutCardFrames: PreferenceKey {
         if destination != next { destination = next }
         if let content = window.contentView, let preview {
             let local = content.convert(point, from: nil)
-            let width: CGFloat = 240, height: CGFloat = 62
-            let preferredY = content.isFlipped ? local.y + 14 : local.y - height - 14
-            preview.frame = NSRect(
-                x: max(content.bounds.minX + 6, min(content.bounds.maxX - width - 6, local.x + 16)),
-                y: max(content.bounds.minY + 6, min(content.bounds.maxY - height - 6, preferredY)),
-                width: width, height: height)
+            // Scale around the original grip, not around the center. No bounds
+            // clamp or easing may make the displayed card slip from the pointer.
+            let size = preview.frame.size
+            let gripX = previewGrip.x * previewScale
+            let gripY = previewGrip.y * previewScale
+            preview.setFrameOrigin(NSPoint(x: local.x - gripX,
+                y: content.isFlipped ? local.y - gripY : local.y - (size.height - gripY)))
         }
     }
 
@@ -109,6 +144,15 @@ struct HomeLayoutCardFrames: PreferenceKey {
         guard accepts(token: token, window: window), let source = draggedID else { return nil }
         let result = target(at: point, window: window).map { (source, $0) }
         endDrag(token: token)
+        if result != nil {
+            settledID = source
+            let nonce = UUID(); feedbackNonce = nonce
+            feedbackTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(650))
+                guard !Task.isCancelled, let self, self.feedbackNonce == nonce else { return }
+                self.settledID = nil; self.feedbackTask = nil
+            }
+        }
         return result
     }
 
@@ -153,12 +197,14 @@ struct HomeLayoutCardFrames: PreferenceKey {
     func endDrag(token: Token? = nil) {
         if let token, token != dragToken { return }
         preview?.removeFromSuperview(); preview = nil
+        previewGrip = .zero; previewScale = 1
+        feedbackTask?.cancel(); feedbackTask = nil; feedbackNonce = UUID(); settledID = nil
         draggedID = nil; destination = nil; dragToken = nil
         sourceView = nil; sourceWindow = nil
     }
 
     func clear() {
-        endDrag(); editingNonce = nil; allowedIDs = []; targets = [:]; cardFrames = [:]
+        endDrag(); editingNonce = nil; allowedIDs = []; targets = [:]; cardFrames = [:]; cardBodyFrames = [:]
         framesAreCurrent = true
     }
 }
@@ -184,6 +230,9 @@ final class HomeLayoutViewportView: NSView {
 }
 
 struct HomeLayoutEditingCard: View {
+    @EnvironmentObject private var model: AppModel
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let group: HomeProviderGroup
     let index: Int
     let count: Int
@@ -193,6 +242,12 @@ struct HomeLayoutEditingCard: View {
 
     private var destination: HomeLayoutDragSession.Destination? {
         dragSession.destination.flatMap { $0.id == group.id ? $0 : nil }
+    }
+
+    private var presentation: HomeCardPresentation {
+        let copiedID: UUID?
+        if case .secret(let id) = model.copyFeedback { copiedID = id } else { copiedID = nil }
+        return HomeCardPresentation(group: group, copiedEntryID: copiedID)
     }
 
     var body: some View {
@@ -219,12 +274,31 @@ struct HomeLayoutEditingCard: View {
                 .disabled(true)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: HomeLayoutCardBodyFrames.self,
+                            value: [group.id: geometry.frame(in: .named(HomeLayoutGeometry.coordinateSpace))])
+                    }
+                }
+                .opacity(dragSession.draggedID == group.id ? 0.001 : 1)
                 .overlay {
-                    HomeLayoutDragSource(title: group.name, id: group.id, dragSession: dragSession, drop: drop)
+                    if dragSession.draggedID == group.id {
+                        RoundedRectangle(cornerRadius: 16).fill(Color.accentColor.opacity(0.025))
+                            .overlay(RoundedRectangle(cornerRadius: 16)
+                                .strokeBorder(Color.accentColor.opacity(0.20), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                            .allowsHitTesting(false)
+                    } else if dragSession.settledID == group.id {
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(Color.accentColor.opacity(0.65), lineWidth: 2)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .overlay {
+                    HomeLayoutDragSource(presentation: presentation, id: group.id, colorScheme: colorScheme,
+                                         reduceMotion: reduceMotion, dragSession: dragSession, drop: drop)
                         .accessibilityHidden(true)
                 }
         }
-        .opacity(dragSession.draggedID == group.id ? 0.52 : 1)
         .overlay(alignment: destination?.before == false ? .bottom : .top) {
             if let destination {
                 HStack(spacing: 6) {
@@ -254,30 +328,37 @@ struct HomeLayoutEditingCard: View {
 /// The overlay receives ordinary window mouse events, including background
 /// first-click events. Every target is a weak view in this same Home session.
 private struct HomeLayoutDragSource: NSViewRepresentable {
-    let title: String
+    let presentation: HomeCardPresentation
     let id: String
+    let colorScheme: ColorScheme
+    let reduceMotion: Bool
     let dragSession: HomeLayoutDragSession
     let drop: (String, String, Bool) -> Void
 
     func makeNSView(context: Context) -> HomeCardDragView { HomeCardDragView() }
     func updateNSView(_ view: HomeCardDragView, context: Context) {
-        view.configure(title: title, id: id, session: dragSession, drop: drop)
+        view.configure(presentation: presentation, id: id, colorScheme: colorScheme,
+                       reduceMotion: reduceMotion, session: dragSession, drop: drop)
     }
     static func dismantleNSView(_ view: HomeCardDragView, coordinator: ()) { view.detach() }
 }
 
 private final class HomeCardDragView: NSView {
-    private var title = ""
+    private var presentation: HomeCardPresentation?
+    private var colorScheme = ColorScheme.light
+    private var reduceMotion = false
     private var providerID = ""
     private weak var session: HomeLayoutDragSession?
     private var drop: ((String, String, Bool) -> Void)?
     private var pressedAt: NSPoint?
     private var token: HomeLayoutDragSession.Token?
 
-    func configure(title: String, id: String, session: HomeLayoutDragSession,
+    func configure(presentation: HomeCardPresentation, id: String, colorScheme: ColorScheme,
+                   reduceMotion: Bool, session: HomeLayoutDragSession,
                    drop: @escaping (String, String, Bool) -> Void) {
         if self.session !== session || providerID != id { detach() }
-        self.title = title; providerID = id; self.session = session; self.drop = drop
+        self.presentation = presentation; self.colorScheme = colorScheme
+        self.reduceMotion = reduceMotion; providerID = id; self.session = session; self.drop = drop
         session.register(self, id: id)
     }
 
@@ -293,11 +374,12 @@ private final class HomeCardDragView: NSView {
         window?.makeFirstResponder(self)
     }
     override func mouseDragged(with event: NSEvent) {
-        guard let origin = pressedAt, let session, let window else { return }
+        guard let origin = pressedAt, let session, let window, let presentation else { return }
         let point = event.locationInWindow
         if token == nil {
             guard hypot(point.x - origin.x, point.y - origin.y) >= 6 else { return }
-            token = session.beginDrag(id: providerID, title: title, view: self, point: point)
+            token = session.beginDrag(id: providerID, presentation: presentation, colorScheme: colorScheme,
+                                      reduceMotion: reduceMotion, view: self, pressedAt: origin, point: point)
         }
         guard let token else { return }
         session.updateDrag(token: token, point: point, window: window, scrollAtEdge: true)
@@ -323,30 +405,29 @@ private final class HomeCardDragView: NSView {
     }
     func detach() {
         cancel(); session?.unregister(self, id: providerID)
-        session = nil; drop = nil
+        session = nil; drop = nil; presentation = nil
     }
 }
 
-/// The preview contains only the platform title, takes no events or focus, and
-/// is removed immediately on release, cancellation, lock, or leaving Home.
+/// A static Retina rendering of the displayed card metadata. It takes no events
+/// or focus and is removed on release, cancellation, lock, or leaving Home.
 private final class HomeLayoutDragPreviewView: NSView {
-    private let title: String
-    init(title: String) {
-        self.title = title
-        super.init(frame: NSRect(x: 0, y: 0, width: 240, height: 62))
+    private let image: NSImage
+    init(image: NSImage, size: CGSize, scale: CGFloat, reduceMotion: Bool) {
+        self.image = image
+        super.init(frame: NSRect(origin: .zero, size: CGSize(width: size.width * scale, height: size.height * scale)))
         setAccessibilityElement(false)
+        wantsLayer = true
+        layer?.masksToBounds = false
+        layer?.shadowColor = NSColor.black.cgColor
+        layer?.shadowOpacity = reduceMotion ? 0.12 : 0.20
+        layer?.shadowRadius = reduceMotion ? 7 : 14
+        layer?.shadowOffset = CGSize(width: 0, height: -5)
     }
     required init?(coder: NSCoder) { nil }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
     override var isOpaque: Bool { false }
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.controlBackgroundColor.withAlphaComponent(0.96).setFill()
-        let shape = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 12, yRadius: 12)
-        shape.fill(); NSColor.controlAccentColor.setStroke(); shape.lineWidth = 2; shape.stroke()
-        let paragraph = NSMutableParagraphStyle(); paragraph.lineBreakMode = .byTruncatingTail
-        (title as NSString).draw(in: NSRect(x: 16, y: 21, width: 208, height: 22), withAttributes: [
-            .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
-            .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph
-        ])
+        image.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: [.interpolation: NSImageInterpolation.high])
     }
 }

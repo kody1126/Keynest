@@ -13,12 +13,15 @@ extension NSPasteboard: VaultPasteboard {}
 
 @MainActor final class SensitiveClipboard {
     private let pasteboard: any VaultPasteboard
+    private let sleep: @MainActor (Duration) async throws -> Void
     private var ownedChange: Int?
     private var expiry: Task<Void, Never>?
     private var generation = UUID()
 
-    init(pasteboard: any VaultPasteboard = NSPasteboard.general) {
+    init(pasteboard: any VaultPasteboard = NSPasteboard.general,
+         sleep: @escaping @MainActor (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.pasteboard = pasteboard
+        self.sleep = sleep
     }
 
     func copy(_ value: String) -> Bool {
@@ -35,9 +38,10 @@ extension NSPasteboard: VaultPasteboard {}
         // The prepare call establishes this writer's generation. Re-reading
         // after publication could accidentally claim another app's new copy.
         ownedChange = ownership
+        let sleep = self.sleep
         expiry = Task { [weak self] in
             do {
-                try await Task.sleep(for: .seconds(30))
+                try await sleep(.seconds(60))
                 guard !Task.isCancelled, let self, self.generation == copiedGeneration else { return }
                 self.clearOwnedContents()
             } catch { }

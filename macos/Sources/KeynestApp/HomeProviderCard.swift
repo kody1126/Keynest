@@ -7,52 +7,29 @@ struct HomeProviderCard: View {
     @State private var showingAll = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                ProviderIcon(preset: group.preset, size: 44)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(group.name)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .help(group.name)
-                    Text("\(group.entries.count) 把密钥")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        HomeProviderCardLayout(name: group.name, preset: group.preset, keyCount: group.entries.count,
+                               rowCount: min(2, group.entries.count)) { index in
+            HomeCredentialRow(entry: group.entries[index])
+        } more: {
+            Button {
+                showingAll = true
+            } label: {
+                HStack {
+                    Text("查看全部 \(group.entries.count) 把")
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                 }
-                Spacer(minLength: 0)
+                .contentShape(Rectangle())
             }
-
-            VStack(spacing: 12) {
-                ForEach(Array(group.entries.prefix(2))) { entry in
-                    HomeCredentialRow(entry: entry)
-                    if entry.id != group.entries.prefix(2).last?.id {
-                        Divider()
-                    }
-                }
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .font(.callout)
+            .accessibilityLabel("查看 \(group.name) 的全部 \(group.entries.count) 把密钥")
+            .accessibilityIdentifier("keynest.home.more.\(group.id)")
+            .popover(isPresented: $showingAll, arrowEdge: .bottom) {
+                allCredentials
             }
-
-            if group.entries.count > 2 {
-                Button {
-                    showingAll = true
-                } label: {
-                    HStack {
-                        Text("查看全部 \(group.entries.count) 把")
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption.weight(.semibold))
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.tint)
-                .font(.callout)
-                .accessibilityLabel("查看 \(group.name) 的全部 \(group.entries.count) 把密钥")
-                .accessibilityIdentifier("keynest.home.more.\(group.id)")
-                .popover(isPresented: $showingAll, arrowEdge: .bottom) {
-                    allCredentials
-                }
-            }
-
-            Divider()
+        } footer: {
             HStack(spacing: 12) {
                 Button {
                     model.addForProvider(group)
@@ -74,13 +51,6 @@ struct HomeProviderCard: View {
                 }
             }
             .font(.callout)
-        }
-        .padding(16)
-        .frame(minWidth: 280, maxWidth: .infinity, alignment: .leading)
-        .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(.primary.opacity(0.09), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("keynest.home.provider.\(group.id)")
@@ -130,60 +100,14 @@ struct HomeCredentialRow: View {
     @EnvironmentObject private var model: AppModel
     let entry: SecretEntry
 
-    private var accountAndEnvironment: String {
-        [entry.accountLabel, entry.environment].filter { !$0.isEmpty }.joined(separator: " · ")
-    }
-
-    private var addressHost: String? {
-        guard let components = URLComponents(string: entry.baseURL), let host = components.host else { return nil }
-        if let port = components.port { return "\(host):\(port)" }
-        return host
-    }
-
-    private var credentialDescription: String {
-        [entry.name, accountAndEnvironment, addressHost ?? ""].filter { !$0.isEmpty }.joined(separator: "，")
-    }
+    private var presentation: HomeCredentialPresentation { HomeCredentialPresentation(entry: entry, copied: copied) }
+    private var credentialDescription: String { presentation.description }
 
     private var copied: Bool { model.copyFeedback == .secret(entry.id) }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    Text(entry.name).font(.callout.weight(.medium)).lineLimit(1)
-                    if entry.isFavorite {
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
-                    }
-                }
-                if !accountAndEnvironment.isEmpty {
-                    Text(accountAndEnvironment)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                if let addressHost {
-                    Text(addressHost)
-                        .font(.system(.caption2, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .help(credentialDescription)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(credentialDescription + (entry.isFavorite ? "，常用" : ""))
-
-            Button { model.copySecret(entry) } label: {
-                Label(copied ? "已复制" : "复制", systemImage: copied ? "checkmark" : "doc.on.doc")
-                    .fixedSize()
-                    .frame(width: 61)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .frame(minHeight: 30)
+        HomeCredentialRowLayout(presentation: presentation) {
+            HomeCredentialCopyButton(copied: copied) { model.copySecret(entry) }
             .help("复制 \(credentialDescription) 的密钥")
             .accessibilityLabel(copied ? "已复制 \(credentialDescription) 的密钥" : "复制 \(credentialDescription) 的密钥")
             .accessibilityIdentifier("keynest.home.copy.\(entry.id.uuidString)")

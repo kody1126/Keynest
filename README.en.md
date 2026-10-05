@@ -6,14 +6,14 @@
 <p align="center">Local encryption · Touch ID · Find a provider, copy a key</p>
 
 <p align="center">
-  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.11.0"><img src="https://img.shields.io/badge/preview-v0.11.0-5b9bd5" alt="Preview v0.11.0"></a>
+  <a href="https://github.com/kody1126/Keynest/releases/tag/v0.11.1"><img src="https://img.shields.io/badge/preview-v0.11.1-5b9bd5" alt="Preview v0.11.1"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-333333" alt="macOS 14 or later">
   <a href="https://github.com/kody1126/Keynest/actions/workflows/checks.yml"><img src="https://github.com/kody1126/Keynest/actions/workflows/checks.yml/badge.svg?branch=main" alt="Build and tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/code-MIT-38956e" alt="Code license: MIT"></a>
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.0/Keynest-0.11.0-arm64.dmg">Download for macOS</a></strong>
+  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg">Download for macOS</a></strong>
   · <a href="README.md">简体中文</a>
   · <a href="docs/guide.en.md">User guide</a>
   · <a href="https://github.com/kody1126/Keynest/issues">Report an issue</a>
@@ -33,7 +33,7 @@ One model provider can mean several keys. One Agent can need access to search, a
 - **Ready when you open it** — Home cards fit their content in a compact layout, with search at the top right and a favorites filter. No need to open an editor just to copy a key.
 - **Click a charm to copy** — The keyring keeps its 3D enamel brand charms and six-color glass keys, without the platform buttons underneath. Choose a key for a charm, then click to copy. When a provider has several keys, select by name, account, and environment first.
 - **Customize your shortcuts** — Click the metal clasp or **Customize (定制)** to select and reorder 0–8 charms from 61 brands and your saved custom providers. You can still drag, reset, or collapse it.
-- **Put Home in your order** — Use **[Edit Layout (编辑布局)](docs/images/home-layout.jpg)** to drag provider cards in place or move them with the previous/next buttons, then save. Cancel and restore-default options are available. Automatic charms follow the first three providers on Home.
+- **Put Home in your order** — Use **[Edit Layout (编辑布局)](docs/images/home-layout.jpg)** to move complete cards, including their icons and content, or use the previous/next buttons, then save. Cancel and restore-default options are available. Automatic charms follow the first three providers on Home.
 - **Multiple keys, easy to tell apart** — Account labels, environments, and API addresses distinguish personal, team, development, and production use.
 - **Choose a provider, paste your key** — 61 built-in presets cover OpenAI, Claude, Gemini, DeepSeek, Cloudflare, GitHub, and more, with brand icons and official API links.
 - **Organize keys by tool** — 25 tool and Skill templates cover Cursor, Cline, Dify, n8n, and more. The same key can be linked to several tools.
@@ -55,7 +55,7 @@ Reuse existing keys for a tool or add the ones it needs. Keynest organizes crede
 
 ## Download and get started
 
-**[Download Keynest 0.11.0 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.0/Keynest-0.11.0-arm64.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.11.0)
+**[Download Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
 
 Requires **macOS 14 or later**. A package is available for Apple Silicon. You can try building from source on an Intel Mac, but that configuration has not been verified.
 
@@ -81,7 +81,7 @@ The entire vault is encrypted with **AES-256-GCM**. Its encryption key is derive
 
 - No cloud account is required, and Keynest does not initiate vault uploads or synchronization.
 - The vault locks after 10 minutes of inactivity or when your Mac sleeps.
-- Universal Clipboard synchronization is disabled for each copy. Keynest clears it after 30 seconds without replacing anything you copy afterward; third-party clipboard tools may still retain a copy.
+- Universal Clipboard synchronization is disabled for each copy. Keynest clears it after 60 seconds without replacing anything you copy afterward; third-party clipboard tools may still retain a copy.
 - Quota queries must be enabled explicitly and refreshed manually. They currently support selected balance or usage information from DeepSeek, SiliconFlow, and OpenRouter. **There is no real-time quota synchronization across all providers.**
 
 This project has not undergone an independent security audit. Encryption at rest cannot guarantee the safety of unlocked memory, the screen, or the clipboard if malware already controls your Mac.
