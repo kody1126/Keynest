@@ -1,6 +1,7 @@
 import AppKit
 import SceneKit
 import SwiftUI
+import simd
 
 /// Small deterministic state used by the renderer and by headless checks.
 /// It has no scene, display clock, credential or window dependency.
@@ -78,8 +79,8 @@ struct KeychainSceneView: View {
         KeychainSceneSurface(charms: charms, selectedID: selectedID, isActive: isActive,
                              reduceMotion: reduceMotion, reduceTransparency: reduceTransparency,
                              resetToken: resetToken, onSelect: onSelect, onRingTap: onRingTap)
-            // Named SwiftUI buttons next to the scene provide the same actions
-            // to keyboard and VoiceOver without spatial hit testing.
+            // The Home showcase provides equivalent keyboard and VoiceOver
+            // actions without requiring spatial hit testing in this surface.
             .accessibilityHidden(true)
     }
 }
@@ -174,7 +175,7 @@ private struct KeychainSceneSurface: NSViewRepresentable {
         scene?.rootNode.addChildNode(assembly)
         installCameraAndLights()
         setAccessibilityLabel("钥匙串")
-        setAccessibilityHelp("拖动挂件使其摆动，点击挂件查看平台，点击金属挂扣自定义。")
+        setAccessibilityHelp("拖动挂件使其摆动，点击挂件复制已绑定密钥，点击金属挂扣定制。")
         installNotifications()
     }
 
@@ -710,7 +711,10 @@ private struct KeychainSceneSurface: NSViewRepresentable {
         logo.transparencyMode = .dualLayer
         logo.fresnelExponent = 2.0
         if let brandAsset {
-            addMeshes(brandAsset, to: model, glass: glass, silver: silver, logo: logo)
+            let attachment = brandAsset.brandAttachment()
+            addMeshes(brandAsset, to: model, glass: glass, silver: silver, logo: logo,
+                      replacingAttachment: attachment != nil)
+            if let attachment { model.addChildNode(solidConnector(attachment, material: silver)) }
         } else if let asset = KeychainMeshAsset.bundled(named: "glass-key-v1") {
             addMeshes(asset, to: model, glass: glass, silver: silver, logo: logo)
         } else {
@@ -747,8 +751,10 @@ private struct KeychainSceneSurface: NSViewRepresentable {
     }
 
     private static func addMeshes(_ asset: KeychainMeshAsset, to parent: SCNNode,
-                                  glass: SCNMaterial, silver: SCNMaterial, logo: SCNMaterial) {
+                                  glass: SCNMaterial, silver: SCNMaterial, logo: SCNMaterial,
+                                  replacingAttachment: Bool = false) {
         for mesh in asset.meshes {
+            if replacingAttachment && mesh.role == "metal" && mesh.name.hasSuffix("-attachment") { continue }
             let vertices = stride(from: 0, to: mesh.positions.count, by: 3).map {
                 SCNVector3(mesh.positions[$0], mesh.positions[$0 + 1], mesh.positions[$0 + 2])
             }
@@ -761,6 +767,19 @@ private struct KeychainSceneSurface: NSViewRepresentable {
             let node = SCNNode(geometry: geometry); node.name = mesh.role
             parent.addChildNode(node)
         }
+    }
+
+    private static func solidConnector(_ attachment: KeychainMeshAsset.Attachment, material: SCNMaterial) -> SCNNode {
+        let start = SIMD3<Float>(attachment.bodyPoint), end = SIMD3<Float>(attachment.ringPoint)
+        let delta = end - start
+        let cylinder = SCNCylinder(radius: CGFloat(attachment.radius), height: CGFloat(simd_length(delta)))
+        cylinder.radialSegmentCount = 20
+        cylinder.materials = [material]
+        let node = SCNNode(geometry: cylinder)
+        node.name = "metal"
+        node.simdPosition = (start + end) / 2
+        node.simdOrientation = simd_quatf(from: SIMD3<Float>(0, 1, 0), to: simd_normalize(delta))
+        return node
     }
 
     private static func tint(_ name: String) -> NSColor {

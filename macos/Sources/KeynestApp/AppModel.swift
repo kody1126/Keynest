@@ -13,6 +13,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
     @Published var entries: [SecretEntry] = []
     @Published var tools: [ToolGroup] = []
     @Published private(set) var keychainConfiguration: KeychainConfiguration?
+    @Published private(set) var homeProviderOrder: [String]?
     @Published var environmentFilter: String?
     @Published var presentingToolEditor = false
     @Published var presentingToolSetup = false
@@ -292,6 +293,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
     private func acceptUnlocked(_ result: (document: VaultDocument, session: VaultSession, requiresUpgrade: Bool, sourceVersion: Int)) throws {
         session = result.session; entries = result.document.entries; tools = result.document.tools
         keychainConfiguration = result.document.keychainConfiguration
+        homeProviderOrder = result.document.homeProviderOrder
         needsUpgradeBackup = result.requiresUpgrade
         isLocked = false; lastActivity = monotonicNow(); biometricMessage = nil
         if isDemo {
@@ -322,7 +324,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
             guard epoch == generation else { return }
             guard !storage.exists else { throw AppError("密钥库已经存在，未覆盖现有文件。") }
             try writeCommitted(data, to: storage)
-            session = newSession; entries = []; tools = []; keychainConfiguration = nil
+            session = newSession; entries = []; tools = []; keychainConfiguration = nil; homeProviderOrder = nil
             needsUpgradeBackup = false; isInitialized = true; isLocked = false; lastActivity = monotonicNow()
             await refreshBiometricStatus()
         } catch { if generation == epoch { report(error) } }
@@ -341,7 +343,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
     func lock() {
         biometricAccess?.cancel(); automaticBiometricAttemptPending = false; biometricMessage = nil
         for task in quotaTasks.values { task.cancel() }; quotaTasks.removeAll()
-        epoch = UUID(); session = nil; entries = []; tools = []; keychainConfiguration = nil; selectedID = nil; searchText = ""
+        epoch = UUID(); session = nil; entries = []; tools = []; keychainConfiguration = nil; homeProviderOrder = nil; selectedID = nil; searchText = ""
         filter = .home; homeScope = .all; environmentFilter = nil; needsUpgradeBackup = false
         presentingHomeProviderPicker = false; quickAddPreset = nil
         copyFeedback = nil; copyFeedbackGeneration = UUID()
@@ -353,10 +355,11 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
     }
     private func persist(_ newEntries: [SecretEntry], tools newTools: [ToolGroup]? = nil) throws {
         try persist(VaultDocument(entries: newEntries, tools: newTools ?? tools,
-                                  keychainConfiguration: keychainConfiguration))
+                                  keychainConfiguration: keychainConfiguration, homeProviderOrder: homeProviderOrder))
     }
     private var currentDocument: VaultDocument {
-        VaultDocument(entries: entries, tools: tools, keychainConfiguration: keychainConfiguration)
+        VaultDocument(entries: entries, tools: tools, keychainConfiguration: keychainConfiguration,
+                      homeProviderOrder: homeProviderOrder)
     }
     private func persist(_ document: VaultDocument) throws {
         try requireUnlocked()
@@ -366,6 +369,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
         try writeCommitted(data, to: storage)
         needsUpgradeBackup = false; entries = document.entries; tools = document.tools
         keychainConfiguration = document.keychainConfiguration
+        homeProviderOrder = document.homeProviderOrder
     }
     /// Nil restores automatic defaults; an empty charm array remains an explicit
     /// user choice. Nothing is published until the encrypted replacement commits.
@@ -376,6 +380,14 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
         document.keychainConfiguration = try configuration?.validated()
         try persist(document)
         notify("钥匙串已保存")
+    }
+    func saveHomeProviderOrder(_ order: [String]?) throws {
+        try requireUnlocked()
+        guard !busy else { throw AppError("当前正在处理密钥库，请稍后再保存首页顺序。") }
+        var document = currentDocument
+        document.homeProviderOrder = order
+        try persist(document)
+        notify("首页平台顺序已保存")
     }
     private func writeCommitted(_ data: Data, to storage: VaultStorage) throws {
         if try storage.write(data) == .durabilityUncertain {
@@ -614,6 +626,7 @@ enum CopyFeedback: Equatable { case secret(UUID), address(UUID) }
                 try writeCommitted(VaultCodec.encrypt(result.document, session: result.session), to: storage)
                 session = result.session; entries = result.document.entries; tools = result.document.tools
                 keychainConfiguration = result.document.keychainConfiguration
+                homeProviderOrder = result.document.homeProviderOrder
                 needsUpgradeBackup = false; isInitialized = true; isLocked = false; lastActivity = monotonicNow()
             }
             presentingRestore = false; pendingImport = nil; selectedID = filter == .home ? nil : filteredEntries.first?.id; notify("已导入加密备份")

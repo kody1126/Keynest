@@ -73,7 +73,7 @@ final class KeychainConfigurationTests: XCTestCase {
             let bytes = try VaultCodec.encrypt(document, session: session)
             let opened = try VaultCodec.decrypt(bytes, biometricUnlockData: token)
             XCTAssertEqual(opened.document.keychainConfiguration, value)
-            XCTAssertEqual(opened.sourceVersion, 4)
+            XCTAssertEqual(opened.sourceVersion, 5)
             XCTAssertFalse(opened.requiresUpgrade)
             XCTAssertEqual(opened.document.entries, document.entries)
             let envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: bytes) as? [String: Any])
@@ -91,18 +91,18 @@ final class KeychainConfigurationTests: XCTestCase {
         let original = VaultDocument(entries: [credential()])
         let session = try VaultCodec.createSession(password: password)
         let token = try VaultCodec.biometricUnlockData(session: session)
-        for version in 1...3 {
+        for version in 1...4 {
             var payload = try object(original); payload["version"] = version
             let bytes = try encryptedPayload(payload, session: session)
             let opened = try VaultCodec.decrypt(bytes, biometricUnlockData: token)
             XCTAssertEqual(opened.sourceVersion, version)
             XCTAssertTrue(opened.requiresUpgrade)
-            XCTAssertEqual(opened.document.version, 4)
+            XCTAssertEqual(opened.document.version, 5)
             XCTAssertNil(opened.document.keychainConfiguration)
             XCTAssertEqual(opened.document.entries, original.entries)
             let updated = try VaultCodec.encrypt(opened.document, session: opened.session)
             let reopened = try VaultCodec.decrypt(updated, biometricUnlockData: token)
-            XCTAssertEqual(reopened.sourceVersion, 4)
+            XCTAssertEqual(reopened.sourceVersion, 5)
             XCTAssertFalse(reopened.requiresUpgrade)
             XCTAssertEqual(reopened.document.entries, original.entries)
             XCTAssertNil(reopened.document.keychainConfiguration)
@@ -140,7 +140,7 @@ final class KeychainConfigurationTests: XCTestCase {
         }
         var null = base; null["keychainConfiguration"] = NSNull()
         XCTAssertThrowsError(try JSONDecoder().decode(VaultDocument.self, from: JSONSerialization.data(withJSONObject: null)))
-        var future = base; future["version"] = 5
+        var future = base; future["version"] = 6
         XCTAssertThrowsError(try VaultCodec.decrypt(encryptedPayload(future, session: session), biometricUnlockData: token))
     }
 
@@ -159,13 +159,14 @@ final class KeychainConfigurationTests: XCTestCase {
         let existing = credential()
         var incomingEntry = existing; incomingEntry.secret = "fake-only-different-imported-credential"
         let source = VaultDocument(entries: [incomingEntry], keychainConfiguration: .init(charms: [
-            .init(customGroupID: "entry:\(incomingEntry.id.uuidString)", color: .graphite),
+            .init(customGroupID: "entry:\(incomingEntry.id.uuidString)", color: .graphite, credentialID: incomingEntry.id),
             .init(providerID: "openai", color: .rose)
         ]))
         let merged = try VaultDocument(entries: [existing]).merging(source)
         let imported = try XCTUnwrap(merged.entries.first { $0.secret == incomingEntry.secret })
         XCTAssertNotEqual(imported.id, incomingEntry.id)
         XCTAssertEqual(merged.keychainConfiguration?.charms.first?.customGroupID, "entry:\(imported.id.uuidString)")
+        XCTAssertEqual(merged.keychainConfiguration?.charms.first?.credentialID, imported.id)
         XCTAssertEqual(merged.keychainConfiguration?.charms.last, source.keychainConfiguration?.charms.last)
         XCTAssertEqual(try merged.merging(source).entries, merged.entries)
         XCTAssertEqual(try merged.merging(source).keychainConfiguration, merged.keychainConfiguration)

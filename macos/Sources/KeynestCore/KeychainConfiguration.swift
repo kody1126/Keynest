@@ -16,21 +16,24 @@ public enum KeychainCharmColor: String, Codable, CaseIterable, Identifiable, Has
     }
 }
 
-/// References only a platform group, never one implicitly chosen credential.
+/// References a platform group and optionally an explicitly chosen credential.
 /// Custom group identifiers can contain private names and belong inside the
 /// encrypted payload. They must not be copied into UserDefaults or asset paths.
 public struct KeychainCharmSelection: Codable, Equatable, Identifiable, Sendable {
     public var providerID: String?
     public var customGroupID: String?
     public var color: KeychainCharmColor
+    public var credentialID: UUID?
 
     public var id: String { providerID.map { "provider:\($0)" } ?? customGroupID ?? "invalid" }
 
-    public init(providerID: String? = nil, customGroupID: String? = nil, color: KeychainCharmColor = .ice) {
+    public init(providerID: String? = nil, customGroupID: String? = nil, color: KeychainCharmColor = .ice,
+                credentialID: UUID? = nil) {
         self.providerID = providerID; self.customGroupID = customGroupID; self.color = color
+        self.credentialID = credentialID
     }
 
-    private enum CodingKeys: String, CodingKey { case providerID, customGroupID, color }
+    private enum CodingKeys: String, CodingKey { case providerID, customGroupID, color, credentialID }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -38,6 +41,7 @@ public struct KeychainCharmSelection: Codable, Equatable, Identifiable, Sendable
         providerID = try values.contains(.providerID) ? values.decode(String.self, forKey: .providerID) : nil
         customGroupID = try values.contains(.customGroupID) ? values.decode(String.self, forKey: .customGroupID) : nil
         color = try values.decode(KeychainCharmColor.self, forKey: .color)
+        credentialID = try values.contains(.credentialID) ? values.decode(UUID.self, forKey: .credentialID) : nil
     }
 
     public func validated() throws -> KeychainCharmSelection {
@@ -50,17 +54,9 @@ public struct KeychainCharmSelection: Codable, Equatable, Identifiable, Sendable
             }
         }
         if let customGroupID {
-            if customGroupID.hasPrefix("entry:") {
-                let value = String(customGroupID.dropFirst(6))
-                guard let id = UUID(uuidString: value), id.uuidString == value else {
-                    throw VaultError.invalidField("挂件的自定义平台标识不正确。")
-                }
-            } else {
-                guard customGroupID.hasPrefix("custom:"), customGroupID.count <= 512,
-                      !customGroupID.dropFirst(7).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                      !customGroupID.unicodeScalars.contains(where: { $0.value == 0 }) else {
-                    throw VaultError.invalidField("挂件的自定义平台标识不正确。")
-                }
+            guard (customGroupID.hasPrefix("entry:") || customGroupID.hasPrefix("custom:")),
+                  HomeCatalog.isValidGroupID(customGroupID) else {
+                throw VaultError.invalidField("挂件的自定义平台标识不正确。")
             }
         }
         return self
@@ -91,10 +87,10 @@ public struct KeychainConfiguration: Codable, Equatable, Sendable {
         var result = self
         result.charms = charms.map { original in
             var charm = original
-            if let group = charm.customGroupID, group.hasPrefix("entry:"),
-               let id = UUID(uuidString: String(group.dropFirst(6))), let mapped = identifiers[id] {
-                charm.customGroupID = "entry:\(mapped.uuidString)"
+            if let group = charm.customGroupID {
+                charm.customGroupID = HomeCatalog.remappingGroupID(group, entries: identifiers)
             }
+            if let id = charm.credentialID, let mapped = identifiers[id] { charm.credentialID = mapped }
             return charm
         }
         return result

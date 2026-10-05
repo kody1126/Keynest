@@ -126,7 +126,7 @@ public enum VaultCodec {
             try validatePayloadSchema(plaintext)
             let decoded = try JSONDecoder().decode(VaultDocument.self, from: plaintext)
             let document = try decoded.validated()
-            return (document, VaultSession(key: key, salt: salt), decoded.version < 4, decoded.version)
+            return (document, VaultSession(key: key, salt: salt), decoded.version < 5, decoded.version)
         } catch { throw VaultError.invalidFormat }
     }
 
@@ -207,13 +207,18 @@ public enum VaultCodec {
     }
 
     private static func validatePayloadSchema(_ data: Data) throws {
-        let document = try strictObject(JSONSerialization.jsonObject(with: data), required: ["version", "entries"], optional: ["tools", "keychainConfiguration"])
+        let document = try strictObject(JSONSerialization.jsonObject(with: data), required: ["version", "entries"], optional: ["tools", "keychainConfiguration", "homeProviderOrder"])
+        let version = document["version"] as? Int ?? 0
+        if let order = document["homeProviderOrder"] {
+            guard version == 5, let ids = order as? [String], ids.count <= 2000 else { throw VaultError.invalidFormat }
+        }
         if let configuration = document["keychainConfiguration"] {
-            guard (document["version"] as? Int) == 4 else { throw VaultError.invalidFormat }
+            guard [4, 5].contains(version) else { throw VaultError.invalidFormat }
             let object = try strictObject(configuration, required: ["charms"])
             guard let charms = object["charms"] as? [Any], charms.count <= 8 else { throw VaultError.invalidFormat }
             for charm in charms {
-                _ = try strictObject(charm, required: ["color"], optional: ["providerID", "customGroupID"])
+                let optional: Set<String> = version == 5 ? ["providerID", "customGroupID", "credentialID"] : ["providerID", "customGroupID"]
+                _ = try strictObject(charm, required: ["color"], optional: optional)
             }
         }
         guard let entries = document["entries"] as? [Any], entries.count <= 2000 else { throw VaultError.invalidFormat }
@@ -222,7 +227,7 @@ public enum VaultCodec {
             for tool in tools {
                 let object = try strictObject(tool, required: ["id", "name", "notes", "createdAt", "updatedAt"], optional: ["templateID"])
                 if let template = object["templateID"] {
-                    guard [3, 4].contains(document["version"] as? Int ?? 0), template is String else { throw VaultError.invalidFormat }
+                    guard [3, 4, 5].contains(version), template is String else { throw VaultError.invalidFormat }
                 }
             }
         }

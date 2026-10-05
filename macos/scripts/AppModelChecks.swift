@@ -88,10 +88,10 @@ private final class AppChecks {
         return model.entries.first { $0.id == id }!
     }
 
-    private func versionThreeFixture(password: String, entries: [SecretEntry] = []) throws -> Data {
+    private func legacyFixture(password: String, entries: [SecretEntry] = []) throws -> Data {
         let session = try VaultCodec.createSession(password: password)
         var payload = try JSONSerialization.jsonObject(with: JSONEncoder().encode(VaultDocument(entries: entries))) as! [String: Any]
-        payload["version"] = 3
+        payload["version"] = 4
         var envelope = try JSONSerialization.jsonObject(with: VaultCodec.encrypt(VaultDocument(), session: session)) as! [String: Any]
         let nonce = AES.GCM.Nonce()
         let header = Data("Keynest|format=keynest-vault|version=1|cipher=aes-256-gcm|kdf=pbkdf2-sha256|iterations=600000|salt=\(session.salt.base64EncodedString())".utf8)
@@ -153,28 +153,35 @@ private final class AppChecks {
 
         // Only this proven temporary empty vault receives a historical fixture.
         try expect(model.keychainConfiguration == nil, "A new vault uses automatic keychain defaults")
+        try expect(model.homeProviderOrder == nil, "A new vault uses automatic provider order")
         model.lock()
-        let legacyBytes = try versionThreeFixture(password: password)
+        let legacyBytes = try legacyFixture(password: password)
         try VaultStorage(directory: directory).write(legacyBytes)
         await model.unlock(password: password)
         try expect(!model.isLocked && model.keychainConfiguration == nil && model.entries.isEmpty,
-                   "Payload three unlock must not invent a custom configuration or credentials")
+                   "Payload four unlock must not invent a custom configuration or credentials")
         let keychain = KeychainConfiguration(charms: [
-            .init(providerID: "openai", color: .rose),
+            .init(providerID: "openai", color: .rose, credentialID: UUID()),
             .init(customGroupID: "custom:private fixture keychain", color: .graphite)
         ])
         try model.saveKeychainConfiguration(keychain)
         try expect(model.keychainConfiguration == keychain, "Configuration becomes visible after the encrypted save")
-        let upgradeBackup = directory.appendingPathComponent("vault-before-0.10.keynest")
+        let upgradeBackup = directory.appendingPathComponent("vault-before-0.11.keynest")
         try expect(try Data(contentsOf: upgradeBackup) == legacyBytes,
-                   "First payload-four save must preserve the original encrypted payload-three bytes")
+                   "First payload-five save must preserve the original encrypted payload-four bytes")
+        let homeOrder = ["resend", "custom:private fixture home order", "openai"]
+        try model.saveHomeProviderOrder(homeOrder)
+        try expect(model.homeProviderOrder == homeOrder, "An encrypted successful save publishes Home order")
         let savedConfigurationBytes = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
         let savedConfiguration = try VaultCodec.decrypt(savedConfigurationBytes, password: password)
-        try expect(savedConfiguration.sourceVersion == 4 && !savedConfiguration.requiresUpgrade &&
+        try expect(savedConfiguration.sourceVersion == 5 && !savedConfiguration.requiresUpgrade &&
                    savedConfiguration.document.keychainConfiguration == keychain,
-                   "The configuration must round-trip in payload four")
+                   "The configuration must round-trip in payload five")
         try expect(!String(decoding: savedConfigurationBytes, as: UTF8.self).contains("private fixture keychain"),
                    "Private custom group identifiers must not appear outside encryption")
+        try expect(savedConfiguration.document.homeProviderOrder == homeOrder &&
+                   !String(decoding: savedConfigurationBytes, as: UTF8.self).contains("private fixture home order"),
+                   "Home ordering and private group references must round-trip only inside encryption")
         let failedConfiguration = KeychainConfiguration(charms: [.init(providerID: "anthropic", color: .amber)])
         let hardLink = directory.appendingPathComponent("fake-configuration-write-blocker")
         try FileManager.default.linkItem(at: directory.appendingPathComponent("vault.keynest"), to: hardLink)
@@ -182,10 +189,28 @@ private final class AppChecks {
             try model.saveKeychainConfiguration(failedConfiguration)
             throw AppCheckFailure(description: "Saving over a hard-linked fixture unexpectedly succeeded")
         } catch is VaultError { }
+        do {
+            try model.saveHomeProviderOrder(["anthropic"])
+            throw AppCheckFailure(description: "Saving Home order over a hard-linked fixture unexpectedly succeeded")
+        } catch is VaultError { }
+        try expect(model.homeProviderOrder == homeOrder,
+                   "A pre-commit Home order failure must not publish the attempted order")
         try expect(model.keychainConfiguration == keychain &&
                    (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == savedConfigurationBytes,
                    "A pre-commit storage failure must preserve both configuration memory and ciphertext")
         try FileManager.default.removeItem(at: hardLink)
+        do {
+            try model.saveHomeProviderOrder(["openai", "openai"])
+            throw AppCheckFailure(description: "Duplicate Home order was saved")
+        } catch is VaultError { }
+        model.busy = true
+        do {
+            try model.saveHomeProviderOrder(["anthropic"])
+            throw AppCheckFailure(description: "Busy Home order save unexpectedly succeeded")
+        } catch is AppError { }
+        model.busy = false
+        try expect(model.homeProviderOrder == homeOrder && (try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))) == savedConfigurationBytes,
+                   "Invalid or busy Home ordering must leave memory and ciphertext unchanged")
         do {
             try model.saveKeychainConfiguration(.init(charms: [.init(providerID: "openai"), .init(providerID: "openai")]))
             throw AppCheckFailure(description: "Duplicate charm targets were saved")
@@ -200,6 +225,13 @@ private final class AppChecks {
         model.lock(); await model.unlock(password: password)
         try expect(model.keychainConfiguration == nil, "Restoring automatic defaults must survive lock and unlock")
         try model.saveKeychainConfiguration(keychain)
+        try model.saveHomeProviderOrder([])
+        model.lock(); await model.unlock(password: password)
+        try expect(model.homeProviderOrder == [], "An explicit empty Home order survives lock and unlock")
+        try model.saveHomeProviderOrder(nil)
+        model.lock(); await model.unlock(password: password)
+        try expect(model.homeProviderOrder == nil, "Restoring automatic Home order survives lock and unlock")
+        try model.saveHomeProviderOrder(homeOrder)
         try expect(try Data(contentsOf: upgradeBackup) == legacyBytes, "Later saves must not overwrite the upgrade backup")
 
         let orbit = ToolGroup(name: "Orbit Lab", notes: "Fictional test tool")
@@ -219,6 +251,7 @@ private final class AppChecks {
         try model.save(production)
         try expect(model.entries.count == 2 && model.tools.count == 2, "Saving entries must preserve tool records")
         try expect(model.keychainConfiguration == keychain, "Saving credentials and tools must retain keychain choices")
+        try expect(model.homeProviderOrder == homeOrder, "Saving credentials and tools must retain Home order")
         try expect(Set(try entry(shared.id, in: model).toolIDs) == [orbit.id, notebook.id],
                    "One shared entry must refer to both tools")
 
@@ -430,6 +463,7 @@ private final class AppChecks {
 
         let savedEntries = model.entries
         let savedTools = model.tools
+        try expect(model.homeProviderOrder == homeOrder, "Tool removal, links, templates and credential edits must retain Home order")
         model.editTool(savedTools[0])
         model.manageLinks(for: savedTools[0])
         model.edit(savedEntries[0])
@@ -443,6 +477,7 @@ private final class AppChecks {
         model.lock()
         try expect(model.isLocked && model.entries.isEmpty && model.tools.isEmpty, "Lock must clear decrypted entries and tools")
         try expect(model.keychainConfiguration == nil, "Lock must clear decrypted custom platform identifiers and choices")
+        try expect(model.homeProviderOrder == nil, "Lock must clear decrypted custom Home ordering")
         try expect(!model.presentingToolSetup && !model.presentingToolEditor && model.editingTool == nil, "Lock must close and clear the tool editor")
         try expect(!model.presentingToolLinks && model.linkingTool == nil, "Lock must close and clear the association sheet")
         try expect(!model.presentingEditor && model.editingEntry == nil, "Lock must close and clear the credential editor")
@@ -457,6 +492,11 @@ private final class AppChecks {
             try model.saveKeychainConfiguration(keychain)
             throw AppCheckFailure(description: "Locked configuration save unexpectedly succeeded")
         } catch is AppError { }
+        do {
+            try model.saveHomeProviderOrder(homeOrder)
+            throw AppCheckFailure(description: "Locked Home order save unexpectedly succeeded")
+        } catch is AppError { }
+        try expect(model.homeProviderOrder == nil, "A rejected locked save must not publish Home ordering")
         try expect(model.keychainConfiguration == nil, "A rejected locked save must not publish decrypted configuration")
         model.addNew(); model.quickAdd(homePreset); model.openAdvancedEntry(homeDraft)
         model.addCustomCredential(); model.showEntry(savedEntries[0])
@@ -471,6 +511,7 @@ private final class AppChecks {
         try expect(model.entries == savedEntries, "Unlock must recover saved credentials and their associations exactly")
         try expect(model.tools == savedTools, "Unlock must recover saved tool records exactly")
         try expect(model.keychainConfiguration == keychain, "Password unlock must recover the encrypted keychain choices")
+        try expect(model.homeProviderOrder == homeOrder, "Password unlock must recover encrypted Home order")
         try expect(model.filter == .home && model.selectedID == nil && model.homeScope == .all &&
                    model.searchText.isEmpty && model.environmentFilter == nil,
                    "Password unlock must open Home with no implicitly selected credential")
@@ -526,6 +567,7 @@ private final class AppChecks {
         await model.unlock(password: replacementPassword)
         try expect(!model.isLocked && model.entries == savedEntries, "New password must preserve all saved credentials")
         try expect(model.keychainConfiguration == keychain, "Password replacement must retain encrypted keychain choices")
+        try expect(model.homeProviderOrder == homeOrder, "Password replacement must retain encrypted Home order")
         try expect(model.filter == .home && model.selectedID == nil,
                    "Unlock after changing the password must still default to Home without selection")
         await model.enableBiometrics()
@@ -536,7 +578,9 @@ private final class AppChecks {
         let importPassword = "Fake-Import-Checks-2026"
         let imported = SecretEntry(name: "Cancelled import fixture", secret: "fake-only-import-must-not-leak")
         let importedConfiguration = KeychainConfiguration(charms: [.init(providerID: "anthropic", color: .lavender)])
-        let incoming = try VaultCodec.encrypt(VaultDocument(entries: [imported], keychainConfiguration: importedConfiguration),
+        let importedOrder = ["anthropic", "entry:\(imported.id.uuidString)"]
+        let incoming = try VaultCodec.encrypt(VaultDocument(entries: [imported], keychainConfiguration: importedConfiguration,
+                                                           homeProviderOrder: importedOrder),
                                              session: VaultCodec.createSession(password: importPassword))
         let beforeImportEntries = model.entries
         let beforeImportBytes = try Data(contentsOf: directory.appendingPathComponent("vault.keynest"))
@@ -554,18 +598,53 @@ private final class AppChecks {
         try expect(try Data(contentsOf: directory.appendingPathComponent("vault.keynest")) == beforeImportBytes,
                    "Cancelled import must not rewrite encrypted storage")
         try expect(model.errorMessage == nil, "Cancelled import must not post a delayed error")
+        try expect(model.homeProviderOrder == homeOrder, "Cancelled import must not publish the imported Home order")
         try model.stageImport(incoming)
         await model.restore(password: importPassword)
         try expect(model.entries.contains { $0.id == imported.id } && !model.presentingRestore,
                    "A new non-cancelled import must still merge and close successfully")
         try expect(model.keychainConfiguration == keychain, "Merging a backup must retain a local explicit keychain choice")
+        try expect(model.homeProviderOrder == homeOrder, "Merging a backup must retain explicit local Home order")
         try model.saveKeychainConfiguration(.init())
+        try model.saveHomeProviderOrder([])
         try model.stageImport(incoming); await model.restore(password: importPassword)
         try expect(model.keychainConfiguration?.charms == [], "Backup merge must not override intentional empty keychain selection")
+        try expect(model.homeProviderOrder == [], "Backup merge must preserve intentional empty Home ordering")
         try model.saveKeychainConfiguration(nil)
+        try model.saveHomeProviderOrder(nil)
         try model.stageImport(incoming); await model.restore(password: importPassword)
         try expect(model.keychainConfiguration == importedConfiguration, "Without a local override, backup merge adopts the imported choices")
+        try expect(model.homeProviderOrder == importedOrder, "Without a local override, backup merge adopts the imported order")
+
+        // A deleted shortcut remains unresolved even when a backup contains
+        // another record under the old UUID. Import it separately, without
+        // changing the user's explicit local binding or duplicating reimports.
+        var deletedShortcut = SecretEntry(name: "Deleted shortcut fixture", provider: "OpenAI", secret: "fake-only-deleted-shortcut")
+        try model.save(deletedShortcut)
+        let staleBinding = KeychainConfiguration(charms: [.init(providerID: "openai", credentialID: deletedShortcut.id)])
+        try model.saveKeychainConfiguration(staleBinding)
+        try model.delete(deletedShortcut)
+        try expect(!model.entries.contains { $0.id == deletedShortcut.id } && model.keychainConfiguration == staleBinding,
+                   "Deleting a selected key must retain an unresolved explicit binding")
+        deletedShortcut.secret = "fake-only-different-backup-key"
+        let staleCollisionBackup = try VaultCodec.encrypt(VaultDocument(entries: [deletedShortcut]),
+                                                          session: VaultCodec.createSession(password: importPassword))
+        try model.stageImport(staleCollisionBackup); await model.restore(password: importPassword)
+        try expect(!model.entries.contains { $0.id == deletedShortcut.id } && model.entries.contains { $0.secret == deletedShortcut.secret },
+                   "Backup import must retain the incoming key under a new ID without reviving the deleted shortcut")
+        try expect(model.keychainConfiguration == staleBinding,
+                   "Backup import must not silently rewrite a stale local credential choice")
+        let afterCollisionEntries = model.entries
+        try model.stageImport(staleCollisionBackup); await model.restore(password: importPassword)
+        try expect(model.entries == afterCollisionEntries && model.keychainConfiguration == staleBinding,
+                   "Reimporting the same stale-ID collision must not add another key or reactivate the binding")
+        model.lock(); await model.unlock(password: replacementPassword)
+        try expect(model.entries == afterCollisionEntries && model.keychainConfiguration == staleBinding,
+                   "The unresolved binding and remapped imported key must survive encrypted lock/unlock")
+        try expect(model.homeProviderOrder == importedOrder,
+                   "The collision import must preserve the separately configured Home order")
         try model.saveKeychainConfiguration(keychain)
+        try model.saveHomeProviderOrder(homeOrder)
 
         // Publish one complete, local-only item, using the current record by ID.
         var stale = imported; stale.secret = "stale-do-not-copy"
@@ -624,6 +703,8 @@ private final class AppChecks {
                                               password: replacementPassword).document
         try expect(committed.entries == model.entries && committed.tools == model.tools && committed.keychainConfiguration == keychain,
                    "A post-rename sync failure must not leave disk and memory diverged")
+        try expect(committed.homeProviderOrder == homeOrder && model.homeProviderOrder == homeOrder,
+                   "Durability-warning credential saves preserve Home order on disk and in memory")
         model.errorMessage = nil
         let faultPassword = "Keynest-Sync-Fault-Password-2026"
         await model.replacePassword(old: replacementPassword, new: faultPassword)
@@ -635,6 +716,7 @@ private final class AppChecks {
         try expect(!model.isLocked && model.entries.first(where: { $0.id == imported.id })?.name == durableFixture.name,
                    "The new password must unlock committed data after a post-rename directory sync failure")
         try expect(model.keychainConfiguration == keychain, "Durability-warning saves and rekey must retain keychain choices")
+        try expect(model.homeProviderOrder == homeOrder, "Durability-warning rekey must retain Home order")
 
         // A password change can be the first write after a format upgrade.
         // Replace only this already-proven temporary fixture, with no preceding
@@ -647,7 +729,7 @@ private final class AppChecks {
         let nextRekeyPassword = "Keynest-Legacy-Rekey-New-2026"
         let legacyRekeyEntry = SecretEntry(name: "Legacy password upgrade fixture", provider: "OpenAI",
                                           secret: "demo-only-not-a-real-key-password-upgrade")
-        let legacyRekeyBytes = try versionThreeFixture(password: legacyRekeyPassword, entries: [legacyRekeyEntry])
+        let legacyRekeyBytes = try legacyFixture(password: legacyRekeyPassword, entries: [legacyRekeyEntry])
         let rekeyStorage = try VaultStorage(directory: directory)
         try rekeyStorage.write(legacyRekeyBytes)
         await model.unlock(password: legacyRekeyPassword)
@@ -679,7 +761,7 @@ private final class AppChecks {
             throw AppCheckFailure(description: "The failed-rekey session token is missing")
         }
         let unchangedSession = try VaultCodec.decrypt(legacyRekeyBytes, biometricUnlockData: unchangedSessionToken)
-        try expect(unchangedSession.sourceVersion == 3 && unchangedSession.document.entries == [legacyRekeyEntry],
+        try expect(unchangedSession.sourceVersion == 4 && unchangedSession.document.entries == [legacyRekeyEntry],
                    "A failed first-write rekey must keep the session capable of decrypting the original vault")
 
         try FileManager.default.removeItem(at: upgradeBackup)
@@ -691,10 +773,10 @@ private final class AppChecks {
         try expect(preservedRekeyBytes == legacyRekeyBytes,
                    "First-write rekey must preserve the exact original ciphertext, before changing its password")
         let preservedRekey = try VaultCodec.decrypt(preservedRekeyBytes, password: legacyRekeyPassword)
-        try expect(preservedRekey.sourceVersion == 3 && preservedRekey.document.entries == [legacyRekeyEntry],
+        try expect(preservedRekey.sourceVersion == 4 && preservedRekey.document.entries == [legacyRekeyEntry],
                    "The upgrade backup must retain both its old payload and original password")
         let upgradedRekey = try VaultCodec.decrypt(rekeyStorage.read(), password: nextRekeyPassword)
-        try expect(upgradedRekey.sourceVersion == 4 && !upgradedRekey.requiresUpgrade &&
+        try expect(upgradedRekey.sourceVersion == 5 && !upgradedRekey.requiresUpgrade &&
                    upgradedRekey.document.entries == [legacyRekeyEntry],
                    "The new password must decrypt the upgraded document without losing legacy records")
         try expect(biometric.token == nil && !model.biometricEnabled,
@@ -706,6 +788,22 @@ private final class AppChecks {
         try model.saveKeychainConfiguration(.init())
         try expect(try Data(contentsOf: upgradeBackup) == legacyRekeyBytes,
                    "Subsequent saves must not replace the original legacy-rekey backup")
+        let restoredSelection = KeychainConfiguration(charms: [.init(providerID: "openai", credentialID: legacyRekeyEntry.id)])
+        try model.saveKeychainConfiguration(restoredSelection)
+        try model.saveHomeProviderOrder(["openai"])
+        let restoreToEmptyBytes = try rekeyStorage.read()
+        model.lock()
+        try FileManager.default.removeItem(at: rekeyStorage.fileURL)
+        model.isInitialized = false
+        try model.stageImport(restoreToEmptyBytes)
+        await model.restore(password: nextRekeyPassword)
+        try expect(!model.isLocked && model.isInitialized && model.homeProviderOrder == ["openai"],
+                   "Restoring an encrypted backup into a missing temporary vault restores Home order")
+        try expect(model.keychainConfiguration == restoredSelection && model.entries == [legacyRekeyEntry],
+                   "A fresh restore retains the explicitly selected credential with its record")
+        model.lock(); await model.unlock(password: nextRekeyPassword)
+        try expect(model.homeProviderOrder == ["openai"] && model.keychainConfiguration == restoredSelection,
+                   "Freshly restored Home order and credential selection remain encrypted and readable")
     }
 }
 

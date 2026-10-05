@@ -8,11 +8,13 @@ struct HomeKeychainShowcase: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var resetToken = 0
     @State private var showsCustomization = false
-    @State private var selected: KeychainCharmSelection?
+    @State private var customizationSelectionID: String?
+    @State private var keyboardIndex = 0
+    @FocusState private var sceneFocused: Bool
     let onCollapse: () -> Void
 
     private var groups: [HomeProviderGroup] {
-        model.isLocked ? [] : HomeCatalog.groups(entries: model.entries, tools: model.tools)
+        model.isLocked ? [] : HomeCatalog.ordered(HomeCatalog.groups(entries: model.entries, tools: model.tools), by: model.homeProviderOrder)
     }
     private var items: [KeychainCatalogItem] {
         KeychainCatalog.resolved(configuration: model.keychainConfiguration, groups: groups)
@@ -27,12 +29,12 @@ struct HomeKeychainShowcase: View {
         VStack(spacing: 0) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("你的钥匙串").font(.headline)
-                    Text(reduceMotion ? "点击挂件取用 API · 已减少动态效果" : "把常用 API 挂在手边，点一下就能取用。")
+                    Text("钥匙串").font(.headline)
+                    Text(reduceMotion ? "点击复制密钥 · 已减少动态效果" : "点击挂件，复制密钥。")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button { selected = nil; showsCustomization = true } label: {
+                Button { customize() } label: {
                     Label("定制", systemImage: "slider.horizontal.3")
                 }
                 .buttonStyle(.bordered)
@@ -50,55 +52,43 @@ struct HomeKeychainShowcase: View {
             }
             .padding(.horizontal, 22).padding(.top, 18)
 
-            KeychainSceneView(charms: sceneCharms, selectedID: selected?.id,
-                              isActive: !model.isLocked && !showsCustomization && selected == nil,
-                              resetToken: resetToken,
-                              onSelect: { id in
-                                  guard !model.isLocked else { return }
-                                  selected = items.first { $0.id == id }?.selection
-                              }, onRingTap: { selected = nil; showsCustomization = true })
-                .frame(height: 292)
-                .padding(.horizontal, 20)
-                .mask(LinearGradient(stops: [.init(color: .clear, location: 0),
-                                              .init(color: .black, location: 0.06),
-                                              .init(color: .black, location: 1)],
-                                     startPoint: .top, endPoint: .bottom))
-                .popover(item: $selected, arrowEdge: .bottom) { selection in
-                    KeychainCredentialPanel(selection: selection, onClose: { selected = nil })
-                        .environmentObject(model)
+            ZStack {
+                KeychainSceneView(charms: sceneCharms, selectedID: focusedItem?.id,
+                                  isActive: !model.isLocked && !showsCustomization,
+                                  resetToken: resetToken,
+                                  onSelect: activate,
+                                  onRingTap: { customize() })
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0),
+                                                  .init(color: .black, location: 0.06),
+                                                  .init(color: .black, location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
+            }
+            .frame(height: 292)
+            .padding(.horizontal, 20).padding(.bottom, 12)
+            .focusable(!items.isEmpty).focused($sceneFocused)
+            .focusEffectDisabled()
+            .onKeyPress(keys: [.leftArrow, .rightArrow, .return, .space]) { press in
+                guard !model.isLocked, !showsCustomization, !items.isEmpty else { return .ignored }
+                if press.key == .leftArrow { keyboardIndex = (keyboardIndex + items.count - 1) % items.count }
+                else if press.key == .rightArrow { keyboardIndex = (keyboardIndex + 1) % items.count }
+                else { activate(items[min(keyboardIndex, items.count - 1)].id) }
+                return .handled
+            }
+            .help("左右键选择挂件，空格或回车复制；也可直接点击挂件。")
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("钥匙串挂件")
+            .accessibilityChildren {
+                ForEach(items) { item in
+                    Button(accessibilityTitle(item)) { activate(item.id) }
+                        .accessibilityIdentifier("keynest.home.keychain.platform.\(item.id)")
                 }
+            }
 
             if items.isEmpty {
-                Button("选择想挂上的 API 平台") { showsCustomization = true }
+                Button("选择想挂上的 API 平台") { customize() }
                     .buttonStyle(.borderless).padding(.bottom, 19)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(items) { item in
-                            Button { selected = item.selection } label: {
-                                HStack(spacing: 6) {
-                                    KeychainPlatformAvatar(preset: item.preset, color: item.selection.color, size: 16)
-                                    Text(item.name).lineLimit(1)
-                                    if item.savedCount > 0 {
-                                        Text("\(item.savedCount)").foregroundStyle(.secondary).monospacedDigit()
-                                    }
-                                }
-                                .font(.caption.weight(.medium)).padding(.horizontal, 11).padding(.vertical, 7)
-                                .background(reduceTransparency ? AnyShapeStyle(Color(nsColor: .controlBackgroundColor)) : AnyShapeStyle(.regularMaterial), in: Capsule())
-                                .overlay(Capsule().strokeBorder(.primary.opacity(0.07), lineWidth: 0.5))
-                            }
-                            .buttonStyle(.plain)
-                            .help("查看 \(item.name) 的密钥")
-                            .accessibilityLabel("查看 \(item.name)，\(item.savedCount) 把密钥")
-                            .accessibilityIdentifier("keynest.home.keychain.platform.\(item.id)")
-                        }
-                    }
-                    .padding(.horizontal, 22).padding(.vertical, 4)
-                    .frame(minWidth: 0)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.bottom, 14)
             }
+
         }
         .background {
             ZStack {
@@ -115,15 +105,47 @@ struct HomeKeychainShowcase: View {
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
             .strokeBorder(.primary.opacity(0.07), lineWidth: 0.5))
         .sheet(isPresented: $showsCustomization) {
-            KeychainCustomizationView().environmentObject(model)
+            KeychainCustomizationView(initialSelectionID: customizationSelectionID).environmentObject(model)
         }
         .onChange(of: model.isLocked) { _, locked in
-            if locked { selected = nil; showsCustomization = false }
+            if locked { customizationSelectionID = nil; showsCustomization = false; sceneFocused = false }
         }
         .onChange(of: items.map(\.id)) { _, ids in
-            if let selected, !ids.contains(selected.id) { self.selected = nil }
+            keyboardIndex = min(keyboardIndex, max(0, ids.count - 1))
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("keynest.home.keychain")
     }
+
+    private var focusedItem: KeychainCatalogItem? {
+        guard sceneFocused, !items.isEmpty else { return nil }
+        return items[min(keyboardIndex, items.count - 1)]
+    }
+
+    private func customize(_ id: String? = nil) {
+        guard !model.isLocked else { return }
+        customizationSelectionID = id
+        showsCustomization = true
+    }
+
+    private func activate(_ id: String) {
+        guard !model.isLocked, !model.busy, !showsCustomization,
+              let item = items.first(where: { $0.id == id }) else { return }
+        if let entry = item.copyEntry {
+            model.copySecret(entry)
+        } else if item.savedCount == 0, item.selection.credentialID == nil, let preset = item.preset {
+            model.quickAdd(preset)
+        } else {
+            // Ambiguous, deleted or moved bindings are edited explicitly. Never
+            // choose the first key or silently switch a previously saved binding.
+            customize(id)
+        }
+    }
+
+    private func accessibilityTitle(_ item: KeychainCatalogItem) -> String {
+        if let entry = item.copyEntry { return "复制 \(item.name)：\(entry.name)" }
+        if item.savedCount == 0, item.selection.credentialID == nil { return "为 \(item.name) 添加密钥" }
+        return "选择 \(item.name) 点击时复制的密钥"
+    }
+
 }

@@ -20,6 +20,7 @@ bash scripts/run-checks.sh
 bash scripts/run-app-checks.sh
 bash scripts/run-keychain-checks.sh
 bash scripts/run-keychain-drag-checks.sh
+bash scripts/run-keychain-attachment-checks.sh
 bash scripts/run-keychain-catalog-checks.sh
 bash scripts/run-keychain-asset-checks.sh
 bash scripts/run-biometric-checks.sh --file-only
@@ -33,9 +34,9 @@ npm test
 
 The native core uses system frameworks without third-party Swift packages. See the [macOS README](macos/README.md) for building, installation and data compatibility, and [third-party notices](THIRD_PARTY_NOTICES.md) for brand assets.
 
-钥匙串检查无需窗口：运动与资源检查不创建渲染器，平台目录检查只用内存虚构条目。渲染效果、点击取用和真实窗口生命周期仍需在独立 Demo 中人工检查。配置保存在加密载荷版本 4 内；修改配置结构时请覆盖旧版兼容、加密备份、合并与锁定清理。
+钥匙串检查无需窗口：运动与资源检查不创建渲染器，平台目录检查只用内存虚构条目。渲染效果、点击复制和真实窗口生命周期仍需在独立 Demo 中人工检查。挂件绑定和首页顺序保存在加密载荷版本 5 内；修改配置结构时请覆盖旧版兼容、加密备份、合并、失效绑定不得改选其他密钥，以及锁定清理。
 
-Keyring checks do not require windows: motion and resource checks do not create a renderer, and catalog checks use fictional in-memory entries. Verify rendering, key-panel interactions, and real window lifecycle behavior separately in the Demo. Configuration lives in encrypted payload version 4; schema changes need coverage for older payloads, encrypted backups, merging, and clearing state on lock.
+Keyring checks do not require windows: motion and resource checks do not create a renderer, and catalog checks use fictional in-memory entries. Verify rendering, direct copying, and real window lifecycle behavior separately in the Demo. Charm bindings and Home order live in encrypted payload version 5; schema changes need coverage for older payloads, encrypted backups, merging, missing bindings never falling back to another key, and clearing state on lock.
 
 安装与常规源码构建不需要 Blender。仅在重建立体资源时使用它，步骤与来源见 [KeychainArt](macos/Resources/KeychainArt/README.md)。品牌挂件是上游图标的派生资源，须保留对应授权说明，不可统一标为原创 MIT 图形。
 

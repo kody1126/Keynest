@@ -51,7 +51,7 @@ final class ToolTemplateMigrationTests: XCTestCase {
         for opened in [passwordOpened, biometricOpened] {
             XCTAssertEqual(opened.sourceVersion, 2)
             XCTAssertTrue(opened.requiresUpgrade)
-            XCTAssertEqual(opened.document.version, 4)
+            XCTAssertEqual(opened.document.version, 5)
             XCTAssertEqual(opened.document.entries, original.entries)
             XCTAssertEqual(opened.document.tools, original.tools)
             XCTAssertNil(opened.document.tools.first?.templateID)
@@ -62,7 +62,7 @@ final class ToolTemplateMigrationTests: XCTestCase {
         let passwordReopened = try VaultCodec.decrypt(upgraded, password: password)
         let biometricReopened = try VaultCodec.decrypt(upgraded, biometricUnlockData: token)
         for reopened in [passwordReopened, biometricReopened] {
-            XCTAssertEqual(reopened.sourceVersion, 4)
+            XCTAssertEqual(reopened.sourceVersion, 5)
             XCTAssertFalse(reopened.requiresUpgrade)
             XCTAssertEqual(reopened.document.entries, original.entries)
             XCTAssertEqual(reopened.document.tools, original.tools)
@@ -84,7 +84,7 @@ final class ToolTemplateMigrationTests: XCTestCase {
             XCTAssertFalse(text.contains(privateValue))
         }
         let restored = try VaultCodec.decrypt(backup, password: password)
-        XCTAssertEqual(restored.sourceVersion, 4)
+        XCTAssertEqual(restored.sourceVersion, 5)
         XCTAssertFalse(restored.requiresUpgrade)
         XCTAssertEqual(restored.document.tools, incoming.tools)
         XCTAssertEqual(restored.document.entries, incoming.entries)

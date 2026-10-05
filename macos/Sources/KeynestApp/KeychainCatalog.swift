@@ -13,6 +13,14 @@ struct KeychainCatalogItem: Identifiable {
     var isUnavailable: Bool { preset == nil && group == nil }
     var savedCount: Int { group?.entries.count ?? 0 }
 
+    /// A saved binding must still exist in this exact platform. Never fall back
+    /// from a deleted/moved binding to a different key, even when only one is left.
+    var copyEntry: SecretEntry? {
+        let entries = group?.entries ?? []
+        if let id = selection.credentialID { return entries.first { $0.id == id } }
+        return entries.count == 1 ? entries.first : nil
+    }
+
     func matches(search: String) -> Bool {
         if let preset { return preset.matches(search: search) }
         let terms = search.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }

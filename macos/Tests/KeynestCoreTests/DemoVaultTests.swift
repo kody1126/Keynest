@@ -254,10 +254,10 @@ final class DemoVaultTests: XCTestCase {
         let session = try VaultCodec.createSession(password: DemoVault.password)
         let reopened = try VaultCodec.decrypt(VaultCodec.encrypt(old, session: session), password: DemoVault.password)
         XCTAssertFalse(reopened.requiresUpgrade)
-        XCTAssertEqual(reopened.document.version, 4)
+        XCTAssertEqual(reopened.document.version, 5)
         let upgraded = try DemoVault.upgradingCatalog(reopened.document, fromRevision: 5)
         XCTAssertEqual(upgraded.entries.count, 34)
-        XCTAssertEqual(upgraded.version, 4)
+        XCTAssertEqual(upgraded.version, 5)
     }
 
     func testCatalogMigrationFrom05PreservesAllUserChangesAndCustomRecords() throws {
@@ -359,7 +359,7 @@ final class DemoVaultTests: XCTestCase {
         let upgraded = try DemoVault.upgradingCatalog(decoded, fromRevision: 4)
         XCTAssertEqual(upgraded.entries, DemoVault.document().entries)
         XCTAssertEqual(upgraded.tools, DemoVault.document().tools)
-        XCTAssertEqual(upgraded.version, 4)
+        XCTAssertEqual(upgraded.version, 5)
     }
 
     func testCatalogUpgradeFrom04RetainsEditedAndDeletedLegacyEntries() throws {
@@ -510,6 +510,6 @@ final class DemoVaultTests: XCTestCase {
         let upgraded = try DemoVault.upgradingCatalog(decoded, fromRevision: 6)
         XCTAssertEqual(upgraded.entries, DemoVault.document().entries)
         XCTAssertEqual(upgraded.tools, DemoVault.document().tools)
-        XCTAssertEqual(upgraded.version, 4)
+        XCTAssertEqual(upgraded.version, 5)
     }
 }

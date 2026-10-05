@@ -15,7 +15,7 @@ ditto "$build_root/Keynest Demo.app" "$stage_dir/Keynest Demo.app"
 cp "$project_dir/../LICENSE" "$stage_dir/LICENSE"
 cp "$project_dir/../THIRD_PARTY_NOTICES.md" "$stage_dir/THIRD_PARTY_NOTICES.md"
 cat > "$stage_dir/安装说明.txt" <<'TEXT'
-Keynest 0.10.0 — 本地 API、Skill 与 Agent 凭据收藏
+Keynest 0.11.0 — 本地 API、Skill 与 Agent 凭据收藏
 
 统一安装到个人的 ~/Applications 文件夹，不要直接从镜像运行。
 在 Finder 中选择「前往文件夹…」，输入 ~/Applications，再复制两个 App。
@@ -26,6 +26,10 @@ Keynest 0.10.0 — 本地 API、Skill 与 Agent 凭据收藏
 密钥和备注保存在本机加密文件中；建议定期导出 .keynest 加密备份。
 解锁后进入首页：按平台直接复制密钥，选平台并粘贴即可快速添加。
 同一平台的多把密钥分别展示，账号、环境与地址帮助区分；完整编辑在更多菜单中。
+点击钥匙串挂件直接复制已选密钥；同平台多把密钥时，先在「定制」中选择。
+原绑定密钥已失效时需重新选择，不会自动换成另一把。没有密钥的平台可快速添加。
+「编辑布局」可原地拖动平台卡片，支持保存、取消与恢复默认；布局随密钥库加密保存。
+首次保存旧格式前保留 vault-before-0.11.keynest 升级备份；旧备份不覆盖。
 
 Keynest Demo.app 是独立演示版，测试密码：Keynest-Demo-2026。
 演示版只有虚构样例，与正式密钥库分开；不要存放真实凭据。
@@ -36,7 +40,7 @@ Keynest Demo.app 是独立演示版，测试密码：Keynest-Demo-2026。
 没有云同步、遥测或账户。额度查询需手动开启并点击，只访问所选平台官方接口。
 TEXT
 cat > "$stage_dir/INSTALL.txt" <<'TEXT'
-Keynest 0.10.0 — local API, Skill and Agent credential manager
+Keynest 0.11.0 — local API, Skill and Agent credential manager
 
 Requires macOS 14+ on the processor architecture named in the DMG filename.
 Copy Keynest.app and, optionally, Keynest Demo.app to ~/Applications.
@@ -47,6 +51,11 @@ https://github.com/kody1126/Keynest/blob/main/README.en.md
 Create a master password on first launch. There is no password recovery.
 Touch ID is optional; the master password remains available as a fallback.
 Export encrypted .keynest backups regularly and keep the password safely.
+Click a keyring charm to copy its selected key; choose one in Customize when a
+provider has several keys. A missing selected key never falls back to another.
+Edit Layout lets you drag Home cards, save or cancel, and restore the default.
+Layout and charm bindings are encrypted with your vault and backups.
+Before upgrading an older vault, vault-before-0.11.keynest preserves its bytes.
 The separate demo vault uses the public password: Keynest-Demo-2026
 Demo credentials are fictional. Never put real credentials in the demo.
 

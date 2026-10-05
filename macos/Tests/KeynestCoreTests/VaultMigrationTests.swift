@@ -6,7 +6,7 @@ import Darwin
 
 final class VaultMigrationTests: XCTestCase {
     private let password = "migration-fixture-password"
-    private let backupName = "vault-before-0.10.keynest"
+    private let backupName = "vault-before-0.11.keynest"
 
     private func credential() -> SecretEntry {
         SecretEntry(name: "旧版密钥", provider: "自定义平台", secret: "fixture-only-legacy-secret",
@@ -53,7 +53,7 @@ final class VaultMigrationTests: XCTestCase {
         let original = try encryptedPayload(legacyPayload(), session: session)
         let reopened = try VaultCodec.decrypt(original, password: password)
         XCTAssertTrue(reopened.requiresUpgrade)
-        XCTAssertEqual(reopened.document.version, 4)
+        XCTAssertEqual(reopened.document.version, 5)
         XCTAssertEqual(reopened.document.tools, [])
         let entry = try XCTUnwrap(reopened.document.entries.first)
         XCTAssertEqual(entry.name, "旧版密钥")
@@ -85,13 +85,13 @@ final class VaultMigrationTests: XCTestCase {
         XCTAssertEqual(reopened.document.entries, original.entries)
     }
 
-    func testLegacyCodableDefaultsOnlyAbsentFieldsAndEveryWriteUsesVersionFour() throws {
+    func testLegacyCodableDefaultsOnlyAbsentFieldsAndEveryWriteUsesVersionFive() throws {
         let payload = try legacyPayload()
         let decoded = try JSONDecoder().decode(VaultDocument.self, from: JSONSerialization.data(withJSONObject: payload))
         XCTAssertEqual(decoded.version, 1)
         XCTAssertEqual(decoded.tools, [])
         let rewritten = try object(decoded)
-        XCTAssertEqual(rewritten["version"] as? Int, 4)
+        XCTAssertEqual(rewritten["version"] as? Int, 5)
         XCTAssertEqual((rewritten["tools"] as? [Any])?.count, 0)
         let entries = try XCTUnwrap(rewritten["entries"] as? [[String: Any]])
         XCTAssertEqual(entries[0]["environment"] as? String, "")
@@ -113,7 +113,7 @@ final class VaultMigrationTests: XCTestCase {
         var entry = credential(); entry.toolIDs = [tool.id]
         let valid = try object(VaultDocument(entries: [entry], tools: [tool]))
         var cases: [[String: Any]] = []
-        var malformed = valid; malformed["version"] = 5; cases.append(malformed)
+        var malformed = valid; malformed["version"] = 6; cases.append(malformed)
         malformed = valid; malformed["tools"] = NSNull(); cases.append(malformed)
         malformed = valid
         var tools = try XCTUnwrap(valid["tools"] as? [[String: Any]])
@@ -136,7 +136,7 @@ final class VaultMigrationTests: XCTestCase {
         let session = try VaultCodec.createSession(password: password)
         let legacy = try encryptedPayload(legacyPayload(), session: session)
         try store.write(legacy)
-        let historicalBackups = ["vault-before-0.5.keynest", "vault-before-0.7.keynest"].map {
+        let historicalBackups = ["vault-before-0.5.keynest", "vault-before-0.7.keynest", "vault-before-0.10.keynest"].map {
             store.directory.appendingPathComponent($0)
         }
         for old in historicalBackups { try legacy.write(to: old) }

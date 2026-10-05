@@ -11,9 +11,10 @@ struct KeychainCustomizationView: View {
     @State private var search = ""
     @State private var errorMessage: String?
     @FocusState private var searchFocused: Bool
+    var initialSelectionID: String? = nil
 
     private var groups: [HomeProviderGroup] {
-        model.isLocked ? [] : HomeCatalog.groups(entries: model.entries, tools: model.tools)
+        model.isLocked ? [] : HomeCatalog.ordered(HomeCatalog.groups(entries: model.entries, tools: model.tools), by: model.homeProviderOrder)
     }
     private var selectedIDs: Set<String> { Set(draft.charms.map(\.id)) }
 
@@ -51,8 +52,8 @@ struct KeychainCustomizationView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("定制你的钥匙串").font(.title2.weight(.semibold))
-            Text("选择想挂上的 API 平台，点击挂件后取用对应密钥。最多 8 个挂件，也可以留空。")
+            Text("定制钥匙串").font(.title2.weight(.semibold))
+            Text("选择平台和点击时复制的密钥。最多 8 个挂件，也可以留空。")
                 .font(.callout).foregroundStyle(.secondary)
         }
         .padding(22)
@@ -143,20 +144,28 @@ struct KeychainCustomizationView: View {
                 Label("自动选择已有平台；空库展示三个常见平台", systemImage: "sparkles")
                     .font(.caption).foregroundStyle(.secondary).padding(.horizontal, 18)
             }
-            ScrollView {
+            ScrollViewReader { proxy in
+              ScrollView {
                 VStack(spacing: 10) {
                     if draft.charms.isEmpty {
                         ContentUnavailableView {
-                            Label("只保留钥匙环", systemImage: "circle")
+                            Label("只保留挂扣", systemImage: "link")
                         } description: {
                             Text("从左侧加入平台，或保存空钥匙串。")
                         }
                     }
                     ForEach(Array(draft.charms.enumerated()), id: \.element.id) { index, charm in
                         selectedRow(charm, index: index, groups: groups)
+                            .id(charm.id)
                     }
                 }
                 .padding(.horizontal, 16).padding(.bottom, 16)
+              }
+              .onChange(of: loaded, initial: true) { _, ready in
+                  if ready, let initialSelectionID {
+                      proxy.scrollTo(initialSelectionID, anchor: .top)
+                  }
+              }
             }
         }
     }
@@ -172,7 +181,7 @@ struct KeychainCustomizationView: View {
                         Label("平台已不存在，展示中会略过", systemImage: "exclamationmark.triangle")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Text(item.savedCount > 0 ? "\(item.savedCount) 把密钥" : "点击挂件后可添加 API")
+                        Text(item.savedCount > 0 ? "\(item.savedCount) 把密钥" : item.selection.credentialID != nil ? "原密钥已失效" : "点击挂件后可添加 API")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -183,6 +192,7 @@ struct KeychainCustomizationView: View {
                     usesAutomaticSelection = false; draft.charms.removeAll { $0.id == charm.id }
                 }
             }
+            credentialPicker(for: item)
             if KeychainPlatformAvatar.hasBrandIcon(for: item.preset) {
                 Text("立体品牌图标 · 保留品牌配色")
                     .font(.caption).foregroundStyle(.secondary)
@@ -214,8 +224,59 @@ struct KeychainCustomizationView: View {
         }
         .padding(12)
         .background(.background, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.08), lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: 12)
+            .strokeBorder(charm.id == initialSelectionID ? Color.accentColor.opacity(0.6) : .primary.opacity(0.08),
+                          lineWidth: charm.id == initialSelectionID ? 1 : 0.5))
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder private func credentialPicker(for item: KeychainCatalogItem) -> some View {
+        let entries = item.group?.entries ?? []
+        if !entries.isEmpty {
+            Picker("点击时复制", selection: Binding<UUID?>(
+                get: { item.copyEntry?.id },
+                set: { id in
+                    guard let id, entries.contains(where: { $0.id == id }),
+                          let index = draft.charms.firstIndex(where: { $0.id == item.id }) else { return }
+                    usesAutomaticSelection = false
+                    draft.charms[index].credentialID = id
+                })) {
+                    Text(item.selection.credentialID == nil ? "请选择一把密钥" : "原密钥已失效，请重新选择")
+                        .tag(UUID?.none).disabled(true)
+                    ForEach(entries) { entry in
+                        Text(credentialTitle(entry, among: entries))
+                            .tag(Optional(entry.id))
+                    }
+                }
+                .pickerStyle(.menu).font(.callout)
+                .accessibilityLabel("\(item.name)点击时复制的密钥")
+                .accessibilityIdentifier("keynest.keychain.credential.\(item.id)")
+            if item.copyEntry == nil {
+                Text("先选定一把，之后点击挂件即可复制。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        } else if item.selection.credentialID != nil, item.preset != nil {
+            Text("重置绑定后，点击挂件可添加新密钥。")
+                .font(.caption).foregroundStyle(.secondary)
+            Button("重置失效绑定") {
+                guard let index = draft.charms.firstIndex(where: { $0.id == item.id }) else { return }
+                usesAutomaticSelection = false
+                draft.charms[index].credentialID = nil
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
+    private func credentialTitle(_ entry: SecretEntry, among entries: [SecretEntry]) -> String {
+        func label(_ value: SecretEntry) -> String {
+            let parts = URLComponents(string: value.baseURL)
+            let host = parts?.host.map { $0 + (parts?.port.map { ":\($0)" } ?? "") } ?? ""
+            return [value.name, value.accountLabel, value.environment, host]
+                .filter { !$0.isEmpty }.joined(separator: " · ")
+        }
+        let title = label(entry)
+        return entries.filter { label($0) == title }.count > 1
+            ? "\(title) · \(entry.id.uuidString.prefix(8))" : title
     }
 
     private func rowButton(_ label: String, symbol: String, disabled: Bool, action: @escaping () -> Void) -> some View {

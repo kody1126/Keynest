@@ -293,42 +293,64 @@ public struct SecretEntry: Identifiable, Codable, Equatable, Sendable {
 }
 
 public struct VaultDocument: Codable, Sendable {
-    public var version: Int = 4
+    public var version: Int = 5
     public var entries: [SecretEntry]
     public var tools: [ToolGroup]
     public var keychainConfiguration: KeychainConfiguration?
+    public var homeProviderOrder: [String]?
 
-    public init(entries: [SecretEntry] = [], tools: [ToolGroup] = [], keychainConfiguration: KeychainConfiguration? = nil) {
+    public init(entries: [SecretEntry] = [], tools: [ToolGroup] = [], keychainConfiguration: KeychainConfiguration? = nil,
+                homeProviderOrder: [String]? = nil) {
         self.entries = entries; self.tools = tools; self.keychainConfiguration = keychainConfiguration
+        self.homeProviderOrder = homeProviderOrder
     }
 
-    private enum CodingKeys: String, CodingKey { case version, entries, tools, keychainConfiguration }
+    private enum CodingKeys: String, CodingKey { case version, entries, tools, keychainConfiguration, homeProviderOrder }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         version = try values.decode(Int.self, forKey: .version)
-        guard [1, 2, 3, 4].contains(version) else { throw VaultError.invalidFormat }
+        guard (1...5).contains(version) else { throw VaultError.invalidFormat }
         entries = try values.decode([SecretEntry].self, forKey: .entries)
         tools = try values.contains(.tools) ? values.decode([ToolGroup].self, forKey: .tools) : []
         if values.contains(.keychainConfiguration) {
-            guard version == 4 else { throw VaultError.invalidFormat }
+            guard version >= 4 else { throw VaultError.invalidFormat }
             keychainConfiguration = try values.decode(KeychainConfiguration.self, forKey: .keychainConfiguration)
+            guard version >= 5 || keychainConfiguration?.charms.allSatisfy({ $0.credentialID == nil }) == true else {
+                throw VaultError.invalidFormat
+            }
         } else { keychainConfiguration = nil }
+        if values.contains(.homeProviderOrder) {
+            guard version >= 5 else { throw VaultError.invalidFormat }
+            homeProviderOrder = try values.decode([String].self, forKey: .homeProviderOrder)
+        } else { homeProviderOrder = nil }
     }
 
     public func encode(to encoder: Encoder) throws {
-        guard [1, 2, 3, 4].contains(version) else { throw VaultError.invalidFormat }
+        guard (1...5).contains(version) else { throw VaultError.invalidFormat }
         var values = encoder.container(keyedBy: CodingKeys.self)
         // Every newly written payload advertises the fields older apps cannot retain.
-        try values.encode(4, forKey: .version)
+        try values.encode(5, forKey: .version)
         try values.encode(entries, forKey: .entries)
         try values.encode(tools, forKey: .tools)
         try values.encodeIfPresent(keychainConfiguration, forKey: .keychainConfiguration)
+        try values.encodeIfPresent(homeProviderOrder, forKey: .homeProviderOrder)
     }
 
     public func merging(_ incoming: VaultDocument) throws -> VaultDocument {
         let current = try validated()
         let source = try incoming.validated()
+        func referencedEntryIDs(in document: VaultDocument) -> Set<UUID> {
+            var ids = Set(document.keychainConfiguration?.charms.compactMap(\.credentialID) ?? [])
+            let groups = (document.keychainConfiguration?.charms.compactMap(\.customGroupID) ?? []) + (document.homeProviderOrder ?? [])
+            for group in groups where group.hasPrefix("entry:") {
+                if let id = UUID(uuidString: String(group.dropFirst(6))) { ids.insert(id) }
+            }
+            return ids
+        }
+        // Preserve unresolved local choices too. Importing a record with a
+        // previously deleted UUID must not silently reactivate its old shortcut.
+        let localDanglingIDs = referencedEntryIDs(in: current).subtracting(current.entries.map(\.id))
         var mergedTools = current.tools
         var toolLookup = Dictionary(uniqueKeysWithValues: mergedTools.map { ($0.id, $0) })
         var toolMapping: [UUID: UUID] = [:]
@@ -356,7 +378,7 @@ public struct VaultDocument: Codable, Sendable {
             }
             var entry = mapped
             var attempt = 0
-            while let existing = entryLookup[entry.id], existing != entry {
+            while localDanglingIDs.contains(entry.id) || entryLookup[entry.id].map({ $0 != entry }) == true {
                 entry.id = try Self.conflictID(mapped, kind: "entry", attempt: attempt)
                 attempt += 1
             }
@@ -365,8 +387,24 @@ public struct VaultDocument: Codable, Sendable {
                 mergedEntries.append(entry); entryLookup[entry.id] = entry
             }
         }
+        // An imported dangling reference must stay dangling. If its old UUID
+        // already belongs to a local credential, binding it would silently
+        // select an unrelated local key even when both share a provider.
+        let referencedIDs = referencedEntryIDs(in: source)
+        var reservedIDs = Set(entryLookup.keys).union(referencedIDs).union(localDanglingIDs)
+        for id in referencedIDs.sorted(by: { $0.uuidString < $1.uuidString }) where entryMapping[id] == nil && entryLookup[id] != nil {
+            var attempt = 0
+            var mapped: UUID
+            repeat {
+                mapped = try Self.conflictID(id, kind: "dangling-entry", attempt: attempt)
+                attempt += 1
+            } while reservedIDs.contains(mapped)
+            entryMapping[id] = mapped; reservedIDs.insert(mapped)
+        }
         let configuration = current.keychainConfiguration ?? source.keychainConfiguration?.remappingEntries(entryMapping)
-        return try VaultDocument(entries: mergedEntries, tools: mergedTools, keychainConfiguration: configuration).validated()
+        let order = current.homeProviderOrder ?? source.homeProviderOrder?.map { HomeCatalog.remappingGroupID($0, entries: entryMapping) }
+        return try VaultDocument(entries: mergedEntries, tools: mergedTools, keychainConfiguration: configuration,
+                                 homeProviderOrder: order).validated()
     }
 
     /// Removes the group and its references, retaining every credential unchanged
@@ -379,11 +417,11 @@ public struct VaultDocument: Codable, Sendable {
             return entry
         }
         return try VaultDocument(entries: remainingEntries, tools: current.tools.filter { $0.id != id },
-                                 keychainConfiguration: current.keychainConfiguration).validated()
+                                 keychainConfiguration: current.keychainConfiguration, homeProviderOrder: current.homeProviderOrder).validated()
     }
 
     internal func validated() throws -> VaultDocument {
-        guard [1, 2, 3, 4].contains(version), entries.count <= 2000, tools.count <= 100 else { throw VaultError.invalidFormat }
+        guard (1...5).contains(version), entries.count <= 2000, tools.count <= 100 else { throw VaultError.invalidFormat }
         var toolIdentifiers = Set<UUID>()
         let validatedTools = try tools.map { tool in
             guard toolIdentifiers.insert(tool.id).inserted else { throw VaultError.invalidFormat }
@@ -399,7 +437,8 @@ public struct VaultDocument: Codable, Sendable {
             return validatedEntry
         }
         return VaultDocument(entries: validatedEntries, tools: validatedTools,
-                             keychainConfiguration: try keychainConfiguration?.validated())
+                             keychainConfiguration: try keychainConfiguration?.validated(),
+                             homeProviderOrder: try homeProviderOrder.map(HomeCatalog.validatedOrder))
     }
 
     /// Stable conflict IDs make reimporting the same backup idempotent without

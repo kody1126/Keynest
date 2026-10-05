@@ -11,8 +11,18 @@ struct HomeView: View {
     @State private var visibleProviderLimit = 80
     @State private var paginationQuery = ""
     @State private var paginationScope = HomeScope.all
+    @State private var editingLayout = false
+    @State private var draftProviderOrder: [String] = []
+    @State private var restoringDefaultLayout = false
+    @State private var editingVisibleLimit = 80
+    @State private var layoutError: String?
+    @StateObject private var layoutDrag = HomeLayoutDragSession()
     private let providerBatchSize = 80
     private let suggestionColumns = [GridItem(.adaptive(minimum: 190), spacing: 10)]
+
+    private var allProviderGroups: [HomeProviderGroup] {
+        HomeCatalog.groups(entries: model.entries, tools: model.tools)
+    }
 
     private var suggestions: [ProviderPreset] {
         let saved = Set(model.entries.compactMap { ProviderPreset.match(provider: $0.provider)?.id })
@@ -25,40 +35,67 @@ struct HomeView: View {
     }
 
     var body: some View {
-        let groups = HomeCatalog.groups(entries: model.entries, tools: model.tools,
-                                        query: model.searchText, scope: model.homeScope)
+        let allGroups = allProviderGroups
+        let groups = editingLayout
+            ? HomeCatalog.ordered(allGroups, by: draftProviderOrder)
+            : HomeCatalog.ordered(HomeCatalog.groups(entries: model.entries, tools: model.tools,
+                                        query: model.searchText, scope: model.homeScope), by: model.homeProviderOrder)
         let recommended = suggestions
-        let visibleLimit = paginationQuery == model.searchText && paginationScope == model.homeScope
-            ? visibleProviderLimit : providerBatchSize
+        let visibleLimit = editingLayout ? editingVisibleLimit :
+            (paginationQuery == model.searchText && paginationScope == model.homeScope ? visibleProviderLimit : providerBatchSize)
         VStack(alignment: .leading, spacing: 0) {
             header
             if !model.entries.isEmpty {
                 HStack(spacing: 16) {
-                    Picker("首页筛选", selection: $model.homeScope) {
-                        ForEach(HomeScope.allCases) { scope in Text(scope.title).tag(scope) }
+                    if editingLayout {
+                        Label("拖动卡片，调整平台顺序", systemImage: "hand.draw")
+                            .font(.callout).foregroundStyle(.secondary)
+                    } else {
+                        Picker("首页筛选", selection: $model.homeScope) {
+                            ForEach(HomeScope.allCases) { scope in Text(scope.title).tag(scope) }
+                        }
+                        .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 350)
+                        .accessibilityIdentifier("keynest.home.scope")
                     }
-                    .pickerStyle(.segmented).labelsHidden().frame(maxWidth: 350)
-                    .accessibilityIdentifier("keynest.home.scope")
                     Spacer(minLength: 0)
-                    if !showsKeychain { showKeychainButton }
-                    Text("\(groups.count) 个平台 · \(groups.reduce(0) { $0 + $1.entries.count }) 把密钥")
-                        .font(.caption).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
+                    if editingLayout {
+                        layoutActions
+                    } else {
+                        if !showsKeychain { showKeychainButton }
+                        Button { beginLayoutEditing() } label: { Label("编辑布局", systemImage: "rectangle.3.group") }
+                            .buttonStyle(.borderless).disabled(model.busy || allGroups.count < 2)
+                            .help("拖动平台卡片调整首页顺序")
+                            .accessibilityIdentifier("keynest.home.layout.edit")
+                        Text("\(groups.count) 个平台 · \(groups.reduce(0) { $0 + $1.entries.count }) 把密钥")
+                            .font(.caption).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
+                    }
                 }
                 .frame(maxWidth: 1380)
                 .padding(.horizontal, 24).padding(.bottom, 16)
+            }
+            if let layoutError, editingLayout {
+                Text(layoutError).font(.callout).foregroundStyle(.red).textSelection(.enabled)
+                    .padding(.horizontal, 24).padding(.bottom, 12)
             }
             Divider().overlay(.primary.opacity(0.02))
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
-                        if showsKeychain {
+                        if !editingLayout && showsKeychain {
                             HomeKeychainShowcase { showsKeychain = false }
-                        } else if model.entries.isEmpty {
+                        } else if !editingLayout && model.entries.isEmpty {
                             showKeychainButton
                         }
                         if !groups.isEmpty {
                             HomeCardLayout {
-                                ForEach(groups.prefix(visibleLimit)) { group in HomeProviderCard(group: group) }
+                                ForEach(Array(groups.prefix(visibleLimit).enumerated()), id: \.element.id) { index, group in
+                                    if editingLayout {
+                                        HomeLayoutEditingCard(group: group, index: index, count: groups.count, dragSession: layoutDrag,
+                                            move: { moveLayoutCard(group.id, by: $0) }, drop: dropLayoutCard)
+                                    } else {
+                                        HomeProviderCard(group: group)
+                                    }
+                                }
                             }
                             .accessibilityElement(children: .contain)
                             .accessibilityIdentifier("keynest.home.saved")
@@ -71,19 +108,25 @@ struct HomeView: View {
                                         .font(.caption).foregroundStyle(.secondary)
                                     Spacer()
                                     Button("显示更多平台") {
-                                        paginationQuery = model.searchText
-                                        paginationScope = model.homeScope
-                                        visibleProviderLimit = visibleLimit + providerBatchSize
+                                        if editingLayout { editingVisibleLimit += providerBatchSize }
+                                        else {
+                                            paginationQuery = model.searchText
+                                            paginationScope = model.homeScope
+                                            visibleProviderLimit = visibleLimit + providerBatchSize
+                                        }
                                     }
                                         .accessibilityIdentifier("keynest.home.loadMore")
                                 }
                             }
+                        } else if editingLayout {
+                            Text("没有可排列的平台。取消即可返回首页。")
+                                .foregroundStyle(.secondary)
                         } else if !model.entries.isEmpty {
                             emptyResults
                         }
-                        if !recommended.isEmpty {
+                        if !editingLayout && !recommended.isEmpty {
                             suggestedPlatforms(recommended)
-                        } else if model.entries.isEmpty {
+                        } else if !editingLayout && model.entries.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("没有找到这个平台").font(.headline)
                                 Text("自建服务也能收藏，填写自己的名称和 API 地址即可。")
@@ -92,7 +135,7 @@ struct HomeView: View {
                             }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(.background, in: RoundedRectangle(cornerRadius: 16))
                         }
-                        HStack(spacing: 10) {
+                        if !editingLayout { HStack(spacing: 10) {
                             Image(systemName: "square.stack.3d.up").foregroundStyle(.secondary)
                             Text("也可以按工具，把多把密钥放在一起。")
                                 .font(.callout).foregroundStyle(.secondary)
@@ -102,28 +145,103 @@ struct HomeView: View {
                         }
                         .padding(.top, 3)
                         .padding(.bottom, 16)
+                        }
                     }
                     .frame(maxWidth: 1380, alignment: .leading)
                     .padding(24)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .id("keynest.home.results")
                 }
+                .coordinateSpace(name: HomeLayoutGeometry.coordinateSpace)
+                .background(HomeLayoutViewportBridge(session: layoutDrag).allowsHitTesting(false))
+                .onPreferenceChange(HomeLayoutCardFrames.self) { frames in
+                    layoutDrag.updateCardFrames(frames)
+                }
                 .onChange(of: model.searchText) { _, _ in
+                    guard !editingLayout else { return }
                     resetPagination()
                     proxy.scrollTo("keynest.home.results", anchor: .top)
                 }
                 .onChange(of: model.homeScope) { _, _ in
+                    guard !editingLayout else { return }
                     resetPagination()
                     proxy.scrollTo("keynest.home.results", anchor: .top)
                 }
+                .onChange(of: editingLayout) { _, _ in proxy.scrollTo("keynest.home.results", anchor: .top) }
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .onChange(of: model.homeSearchFocusRequest, initial: true) { _, request in
             guard request > 0 else { return }
-            searchFocused = true
+            if !editingLayout { searchFocused = true }
             model.homeSearchFocusRequest = 0
         }
+        .onChange(of: model.isLocked) { _, locked in if locked { endLayoutEditing() } }
+        .onChange(of: model.filter) { _, filter in if filter != .home { endLayoutEditing() } }
+        .onChange(of: allGroups.map(\.id)) { _, ids in if editingLayout { layoutDrag.updateIDs(ids) } }
+        .onDisappear { endLayoutEditing() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in layoutDrag.endDrag() }
+    }
+
+    private var layoutActions: some View {
+        HStack(spacing: 12) {
+            Button("恢复默认") {
+                layoutDrag.endDrag()
+                draftProviderOrder = allProviderGroups.map(\.id)
+                restoringDefaultLayout = true; layoutError = nil
+            }
+            .buttonStyle(.borderless).help("恢复默认顺序，点击完成后保存")
+            .accessibilityIdentifier("keynest.home.layout.reset")
+            Button("取消") { endLayoutEditing() }.keyboardShortcut(.cancelAction)
+                .accessibilityIdentifier("keynest.home.layout.cancel")
+            Button("完成") { saveLayout() }.keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent).disabled(model.busy)
+                .accessibilityIdentifier("keynest.home.layout.save")
+        }
+    }
+
+    private func beginLayoutEditing() {
+        guard !model.isLocked, !model.busy else { return }
+        let ordered = HomeCatalog.ordered(allProviderGroups, by: model.homeProviderOrder)
+        draftProviderOrder = ordered.map(\.id)
+        restoringDefaultLayout = model.homeProviderOrder == nil
+        layoutError = nil; editingVisibleLimit = providerBatchSize; searchFocused = false
+        layoutDrag.activate(ids: draftProviderOrder)
+        editingLayout = true
+    }
+
+    private func endLayoutEditing() {
+        layoutDrag.clear(); editingLayout = false
+        draftProviderOrder = []; layoutError = nil; restoringDefaultLayout = false
+    }
+
+    private func moveLayoutCard(_ id: String, by offset: Int) {
+        guard editingLayout, !model.isLocked else { return }
+        var ids = HomeCatalog.ordered(allProviderGroups, by: draftProviderOrder).map(\.id)
+        guard let index = ids.firstIndex(of: id), ids.indices.contains(index + offset) else { return }
+        ids.swapAt(index, index + offset)
+        draftProviderOrder = ids; restoringDefaultLayout = false; layoutError = nil
+        // Moving the last visible card must not make it disappear into the next batch.
+        editingVisibleLimit = max(editingVisibleLimit, index + offset + 1)
+    }
+
+    private func dropLayoutCard(_ source: String, _ target: String, _ before: Bool) {
+        guard editingLayout, !model.isLocked, source != target else { return }
+        var ids = HomeCatalog.ordered(allProviderGroups, by: draftProviderOrder).map(\.id)
+        guard let sourceIndex = ids.firstIndex(of: source), ids.contains(target) else { return }
+        ids.remove(at: sourceIndex)
+        guard let targetIndex = ids.firstIndex(of: target) else { return }
+        ids.insert(source, at: targetIndex + (before ? 0 : 1))
+        draftProviderOrder = ids; restoringDefaultLayout = false; layoutError = nil
+    }
+
+    private func saveLayout() {
+        guard editingLayout, !model.isLocked else { return }
+        do {
+            let order = HomeCatalog.ordered(allProviderGroups, by: draftProviderOrder).map(\.id)
+            try model.saveHomeProviderOrder(restoringDefaultLayout ? nil : order)
+            endLayoutEditing()
+        } catch { layoutError = error.localizedDescription }
     }
 
     private func resetPagination() {
@@ -146,14 +264,16 @@ struct HomeView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 24) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(model.entries.isEmpty ? "保存第一把 API 密钥" : "你的 API 密钥")
+                Text(editingLayout ? "调整首页布局" : model.entries.isEmpty ? "保存第一把 API 密钥" : "你的 API 密钥")
                     .font(.system(size: 24, weight: .semibold))
-                Text(model.entries.isEmpty ? "选一个平台，粘贴密钥。下次直接复制。" : "找到平台，复制需要的那把密钥。")
+                Text(editingLayout ? "拖动平台卡片，或用箭头调整顺序。完成后保存。" : model.entries.isEmpty ? "选一个平台，粘贴密钥。下次直接复制。" : "找到平台，复制需要的那把密钥。")
                     .font(.callout).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             searchField
                 .frame(width: 280)
+                .disabled(editingLayout)
+                .help(editingLayout ? "编辑时展示全部平台；完成或取消后恢复搜索与筛选。" : "搜索密钥与平台")
         }
         .frame(maxWidth: 1380, alignment: .leading)
         .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 18)

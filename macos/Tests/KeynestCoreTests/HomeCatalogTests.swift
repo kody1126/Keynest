@@ -224,4 +224,35 @@ final class HomeCatalogTests: XCTestCase {
         XCTAssertEqual(HomeScope.allCases.map(\.id), ["all", "models", "services", "favorites"])
         XCTAssertEqual(HomeScope.allCases.map(\.title), ["全部", "模型", "Skill 与服务", "常用"])
     }
+
+    func testExplicitOrderMovesOnlyListedGroupsAndKeepsRemainingDefaultOrder() {
+        let source = [entry(1, provider: "OpenAI"), entry(2, provider: "Claude"),
+                      entry(3, provider: "Resend"), entry(4, provider: "Private service")]
+        let groups = HomeCatalog.groups(entries: source)
+        let order = ["resend", "custom:private service"]
+        let ordered = HomeCatalog.ordered(groups, by: order)
+        XCTAssertEqual(ordered.map(\.id), order + groups.filter { !order.contains($0.id) }.map(\.id))
+        XCTAssertEqual(ids(ordered), Set(source.map(\.id)))
+        for group in groups { XCTAssertEqual(ordered.first { $0.id == group.id }, group) }
+        XCTAssertEqual(HomeCatalog.ordered(groups, by: nil), groups)
+        XCTAssertEqual(HomeCatalog.ordered(groups, by: []), groups)
+    }
+
+    func testOrderingFilteredGroupsNeverRestoresHiddenCredentialsOrMissingProviders() {
+        var first = entry(1, provider: "OpenAI"); first.accountLabel = "private"
+        var second = entry(2, provider: "OpenAI"); second.accountLabel = "work"
+        let other = entry(3, provider: "Resend")
+        let groups = HomeCatalog.groups(entries: [first, second, other], query: "work")
+        let ordered = HomeCatalog.ordered(groups, by: ["resend", "custom:deleted", "openai"])
+        XCTAssertEqual(ordered.map(\.id), ["openai"])
+        XCTAssertEqual(ids(ordered), [second.id])
+        XCTAssertEqual(HomeCatalog.ordered([], by: ["openai"]), [])
+    }
+
+    func testOrderingDefensivelyHandlesDuplicateAndUnknownHintsWithoutDuplicatingGroups() {
+        let groups = HomeCatalog.groups(entries: [entry(1, provider: "OpenAI"), entry(2, provider: "Resend")])
+        let ordered = HomeCatalog.ordered(groups, by: ["unknown", "resend", "resend", "openai"])
+        XCTAssertEqual(ordered.map(\.id), ["resend", "openai"])
+        XCTAssertEqual(ordered.count, groups.count)
+    }
 }

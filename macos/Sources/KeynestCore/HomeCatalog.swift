@@ -26,6 +26,44 @@ public struct HomeProviderGroup: Identifiable, Equatable, Sendable {
 /// Pure local presentation logic. Filtering happens before grouping, so a search
 /// never exposes unrelated credentials merely because their provider matched.
 public enum HomeCatalog {
+    /// Orders only the supplied groups: absent or filtered IDs never introduce
+    /// records. Unlisted groups retain the caller's default order.
+    public static func ordered(_ groups: [HomeProviderGroup], by order: [String]?) -> [HomeProviderGroup] {
+        guard let order, !order.isEmpty else { return groups }
+        var rank: [String: Int] = [:]
+        for (index, id) in order.enumerated() where rank[id] == nil { rank[id] = index }
+        return groups.enumerated().sorted { lhs, rhs in
+            let left = rank[lhs.element.id], right = rank[rhs.element.id]
+            if let left, let right, left != right { return left < right }
+            if (left != nil) != (right != nil) { return left != nil }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+    }
+
+    internal static func isValidGroupID(_ value: String) -> Bool {
+        if ProviderPreset.all.contains(where: { $0.id == value }) { return true }
+        if value.hasPrefix("entry:") {
+            let raw = String(value.dropFirst(6))
+            return UUID(uuidString: raw).map { $0.uuidString == raw } ?? false
+        }
+        return value.hasPrefix("custom:") && value.count <= 512 &&
+            !value.dropFirst(7).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !value.unicodeScalars.contains(where: { $0.value == 0 })
+    }
+
+    internal static func validatedOrder(_ order: [String]) throws -> [String] {
+        guard order.count <= 2000, Set(order).count == order.count, order.allSatisfy(isValidGroupID) else {
+            throw VaultError.invalidField("首页平台顺序需要有效且不重复的平台标识，最多 2000 项。")
+        }
+        return order
+    }
+
+    internal static func remappingGroupID(_ value: String, entries: [UUID: UUID]) -> String {
+        guard value.hasPrefix("entry:"), let id = UUID(uuidString: String(value.dropFirst(6))),
+              let mapped = entries[id] else { return value }
+        return "entry:\(mapped.uuidString)"
+    }
+
     public static func groups(entries: [SecretEntry], tools: [ToolGroup] = [],
                               query: String = "", scope: HomeScope = .all) -> [HomeProviderGroup] {
         let terms = query.components(separatedBy: .whitespacesAndNewlines)
