@@ -21,6 +21,8 @@
 
 <p align="center">Apple Silicon · Chinese interface · Free and open source</p>
 
+> **Source preview:** `main` contains the 0.12.0 candidate with live card reordering and refined Blender charms. Final native UI verification is pending; the downloadable release remains 0.11.1. [Verification record](macos/verification.md) · [3D asset previews and source files](macos/Resources/KeychainArt/README.md)
+
 <p align="center">
   <img src="docs/images/home.jpg" width="1000" alt="Keynest Home: provider cards with account and environment labels to distinguish multiple keys, each with a Copy button">
 </p>
@@ -33,7 +35,7 @@ One model provider can mean several keys. One Agent can need access to search, a
 - **Ready when you open it** — Home cards fit their content in a compact layout, with search at the top right and a favorites filter. No need to open an editor just to copy a key.
 - **Click a charm to copy** — The keyring keeps its 3D enamel brand charms and six-color glass keys, without the platform buttons underneath. Choose a key for a charm, then click to copy. When a provider has several keys, select by name, account, and environment first.
 - **Customize your shortcuts** — Click the metal clasp or **Customize (定制)** to select and reorder 0–8 charms from 61 brands and your saved custom providers. You can still drag, reset, or collapse it.
-- **Put Home in your order** — Use **[Edit Layout (编辑布局)](docs/images/home-layout.jpg)** to move complete cards, including their icons and content, or use the previous/next buttons, then save. Cancel and restore-default options are available. Automatic charms follow the first three providers on Home.
+- **Put Home in your order** — Use **[Edit Layout (编辑布局)](docs/images/home-layout.jpg)** to move complete cards; the 0.12 source candidate adds live reflow of neighboring cards and a landing animation. Previous/next buttons, Cancel, and restore-default options remain available. Automatic charms follow the first three providers on Home.
 - **Multiple keys, easy to tell apart** — Account labels, environments, and API addresses distinguish personal, team, development, and production use.
 - **Choose a provider, paste your key** — 61 built-in presets cover OpenAI, Claude, Gemini, DeepSeek, Cloudflare, GitHub, and more, with brand icons and official API links.
 - **Organize keys by tool** — 25 tool and Skill templates cover Cursor, Cline, Dify, n8n, and more. The same key can be linked to several tools.

@@ -37,7 +37,7 @@ struct HomeView: View {
     var body: some View {
         let allGroups = allProviderGroups
         let groups = editingLayout
-            ? HomeCatalog.ordered(allGroups, by: draftProviderOrder)
+            ? HomeCatalog.ordered(allGroups, by: layoutDrag.liveOrder ?? draftProviderOrder)
             : HomeCatalog.ordered(HomeCatalog.groups(entries: model.entries, tools: model.tools,
                                         query: model.searchText, scope: model.homeScope), by: model.homeProviderOrder)
         let recommended = suggestions
@@ -91,7 +91,8 @@ struct HomeView: View {
                                 ForEach(Array(groups.prefix(visibleLimit).enumerated()), id: \.element.id) { index, group in
                                     if editingLayout {
                                         HomeLayoutEditingCard(group: group, index: index, count: groups.count, dragSession: layoutDrag,
-                                            move: { moveLayoutCard(group.id, by: $0) }, drop: dropLayoutCard)
+                                            move: { moveLayoutCard(group.id, by: $0) },
+                                            order: HomeCatalog.ordered(allGroups, by: draftProviderOrder).map(\.id), commit: commitLayoutDrag)
                                     } else {
                                         HomeProviderCard(group: group)
                                     }
@@ -174,6 +175,7 @@ struct HomeView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .overlay { HomeLayoutPreviewBridge(session: layoutDrag).allowsHitTesting(false).accessibilityHidden(true) }
         .onChange(of: model.homeSearchFocusRequest, initial: true) { _, request in
             guard request > 0 else { return }
             if !editingLayout { searchFocused = true }
@@ -220,6 +222,7 @@ struct HomeView: View {
 
     private func moveLayoutCard(_ id: String, by offset: Int) {
         guard editingLayout, !model.isLocked else { return }
+        layoutDrag.endDrag()
         var ids = HomeCatalog.ordered(allProviderGroups, by: draftProviderOrder).map(\.id)
         guard let index = ids.firstIndex(of: id), ids.indices.contains(index + offset) else { return }
         ids.swapAt(index, index + offset)
@@ -228,18 +231,14 @@ struct HomeView: View {
         editingVisibleLimit = max(editingVisibleLimit, index + offset + 1)
     }
 
-    private func dropLayoutCard(_ source: String, _ target: String, _ before: Bool) {
-        guard editingLayout, !model.isLocked, source != target else { return }
-        var ids = HomeCatalog.ordered(allProviderGroups, by: draftProviderOrder).map(\.id)
-        guard let sourceIndex = ids.firstIndex(of: source), ids.contains(target) else { return }
-        ids.remove(at: sourceIndex)
-        guard let targetIndex = ids.firstIndex(of: target) else { return }
-        ids.insert(source, at: targetIndex + (before ? 0 : 1))
-        draftProviderOrder = ids; restoringDefaultLayout = false; layoutError = nil
+    private func commitLayoutDrag(_ order: [String]) {
+        guard editingLayout, !model.isLocked, Set(order) == Set(allProviderGroups.map(\.id)) else { return }
+        draftProviderOrder = order; restoringDefaultLayout = false; layoutError = nil
     }
 
     private func saveLayout() {
         guard editingLayout, !model.isLocked else { return }
+        layoutDrag.endDrag()
         do {
             let order = HomeCatalog.ordered(allProviderGroups, by: draftProviderOrder).map(\.id)
             try model.saveHomeProviderOrder(restoringDefaultLayout ? nil : order)

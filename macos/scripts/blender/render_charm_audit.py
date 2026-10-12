@@ -18,6 +18,7 @@ import build_keychain_art as art
 source = art.OUT / "source" / "brand-charms-v1.blend"
 bpy.ops.wm.open_mainfile(filepath=str(source))
 scene = bpy.context.scene
+art.configure_render_device(scene)
 # Keep the source camera's saved aspect equal to the published four-brand view.
 scene.render.resolution_x, scene.render.resolution_y = 2000, 850
 bpy.context.preferences.filepaths.save_version = 0

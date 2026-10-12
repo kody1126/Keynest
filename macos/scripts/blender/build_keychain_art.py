@@ -1,4 +1,4 @@
-"""Build original Keynest glass keys with Blender; never reads user vault data.
+"""Build Keynest glass keys and derivative brand charms; never reads vault data.
 
 Run with Blender --background --factory-startup --python this-file -- [--render].
 Only existing, attributed ProviderIcons PNGs are used for brand silhouettes.
@@ -15,6 +15,7 @@ import bpy
 import bmesh
 import numpy as np
 from mathutils import Euler, Vector
+from mathutils.geometry import closest_point_on_tri
 
 HERE = Path(__file__).resolve()
 MACOS = HERE.parents[2]
@@ -53,8 +54,8 @@ def material(name, color, metal=0, roughness=.16, transmission=0):
     bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["IOR"].default_value = 1.46
     bsdf.inputs["Transmission Weight"].default_value = transmission
-    bsdf.inputs["Coat Weight"].default_value = .28
-    bsdf.inputs["Coat Roughness"].default_value = .10
+    bsdf.inputs["Coat Weight"].default_value = .45
+    bsdf.inputs["Coat Roughness"].default_value = .12
     mat.diffuse_color = linear_rgba(color)
     return mat
 
@@ -115,7 +116,7 @@ def bevel_cube(name, location, scale, mat, bevel=.02):
 
 def torus(name, location, radius, thickness, mat):
     bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=thickness,
-        major_segments=48, minor_segments=8, location=location)
+        major_segments=64, minor_segments=12, location=location)
     obj = bpy.context.object
     obj.name = name
     for polygon in obj.data.polygons:
@@ -132,18 +133,18 @@ def make_body(glass, silver):
         (-.32, 1.092), (-.532, .89), (-.532, .10), (-.34, -.115),
         (-.108, -.18), (-.108, -1.052), (.108, -1.052), (.108, -.18),
         (.34, -.115), (.532, .10), (.532, .89), (.32, 1.092)
-    ], radius=.13, steps=6)
+    ], radius=.13, steps=10)
     # Outer contour is CCW; the clockwise hole is a genuine opening through Z.
-    hole = [(math.cos(-2 * math.pi * i / 48) * .069,
-             1 + math.sin(-2 * math.pi * i / 48) * .069) for i in range(48)]
-    parts = [curve_shape("glass-continuous-body", [outline, hole], .28, .028, glass)]
-    parts += [torus("connector-front-rim", (0, 1, .140), .082, .009, silver),
-              torus("connector-back-rim", (0, 1, -.140), .082, .009, silver)]
+    hole = [(math.cos(-2 * math.pi * i / 64) * .074,
+             1 + math.sin(-2 * math.pi * i / 64) * .074) for i in range(64)]
+    parts = [curve_shape("glass-continuous-body", [outline, hole], .32, .035, glass, bevel_segments=5)]
+    parts += [torus("connector-front-rim", (0, 1, .160), .087, .012, silver),
+              torus("connector-back-rim", (0, 1, -.160), .087, .012, silver)]
     # Restrained metal teeth and inset spine leave most glass visible.
     parts += [bevel_cube("tooth-upper", (.151, -.67, 0), (.26, .14, .20), silver, .024),
               bevel_cube("tooth-lower", (.168, -.91, 0), (.29, .17, .20), silver, .025),
-              bevel_cube("shaft-inset-front", (0, -.66, .143), (.055, .65, .021), silver, .01),
-              bevel_cube("shaft-inset-back", (0, -.66, -.143), (.055, .65, .021), silver, .01)]
+              bevel_cube("shaft-inset-front", (0, -.66, .162), (.055, .65, .021), silver, .01),
+              bevel_cube("shaft-inset-back", (0, -.66, -.162), (.055, .65, .021), silver, .01)]
     return parts
 
 
@@ -371,12 +372,20 @@ def mesh_document(objects):
         mesh.calc_loop_triangles()
         transform = obj.matrix_world
         normal_transform = transform.to_3x3().inverted().transposed()
-        positions, normals, indices, lookup = [], [], [], {}
+        groups = {}
+        material_roles = list(obj.get("materialRoles", []))
         for triangle in mesh.loop_triangles:
             tri_positions = [transform @ mesh.vertices[mesh.loops[i].vertex_index].co for i in triangle.loops]
             rounded_positions = [Vector(tuple(round(float(v), 6) for v in p)) for p in tri_positions]
             if (rounded_positions[1] - rounded_positions[0]).cross(rounded_positions[2] - rounded_positions[0]).length_squared < 1e-18:
                 continue  # Curve tessellation can emit collinear filler triangles.
+            role = material_roles[triangle.material_index] if material_roles else obj.get("role", "metal")
+            if role == "logo" and obj.name.startswith("charm-"):
+                a, b, c = rounded_positions
+                expected_z = 1 if a.z > 0 else -1
+                if (b - a).cross(c - a).z * expected_z < -1e-9:
+                    raise ValueError(f"Folded cap after export rounding: {obj.name}")
+            positions, normals, indices, lookup = groups.setdefault(role, ([], [], [], {}))
             for loop_index in triangle.loops:
                 loop = mesh.loops[loop_index]
                 p = transform @ mesh.vertices[loop.vertex_index].co
@@ -389,10 +398,30 @@ def mesh_document(objects):
                     positions.extend(packed[:3])
                     normals.extend(packed[3:])
                 indices.append(lookup[packed])
-        result["meshes"].append({"name": obj.name, "role": obj.get("role", "metal"),
-            "positions": positions, "normals": normals, "indices": indices})
+        for role, (positions, normals, indices, lookup) in groups.items():
+            name = f"{obj.name}-{role}" if len(groups) > 1 else obj.name
+            result["meshes"].append({"name": name, "role": role,
+                "positions": positions, "normals": normals, "indices": indices})
         evaluated.to_mesh_clear()
     return result
+
+
+def invalid_cap_triangles(body):
+    """Detect inset bevel folds instead of accepting a pretty but crossed cap."""
+    evaluated = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh = evaluated.to_mesh()
+    mesh.calc_loop_triangles()
+    invalid = 0
+    for triangle in mesh.loop_triangles:
+        if triangle.material_index != 0:
+            continue
+        a, b, c = (mesh.vertices[index].co for index in triangle.vertices)
+        cross = (b - a).cross(c - a)
+        expected = 1 if a.z > 0 else -1
+        if cross.z * expected < -1e-12:
+            invalid += 1
+    evaluated.to_mesh_clear()
+    return invalid
 
 
 def make_charm(provider, source_logo, color, silver):
@@ -403,8 +432,8 @@ def make_charm(provider, source_logo, color, silver):
                  for p in spline.points] for spline in source_logo.data.splines]
     top_offset = .795 - max(y for contour in contours for x, y in contour)
     contours = [[(x, y + top_offset) for x, y in contour] for contour in contours]
-    mat = material(f"Charm {provider} polished enamel", color, metal=.06, roughness=.22)
-    body = curve_shape(f"charm-{provider}-glass-relief", contours, .22, 0,
+    mat = material(f"Charm {provider} polished enamel", color, metal=.04, roughness=.16)
+    body = curve_shape(f"charm-{provider}-glass-relief", contours, .27, 0,
                        mat, role="logo", bevel_segments=0)
     # Bevel an actual solid inward; Curve bevel expands the 2-D contour and
     # incorrectly thickens strokes/narrows holes. Cap normals stay planar.
@@ -414,6 +443,21 @@ def make_charm(provider, source_logo, color, silver):
     welded.from_mesh(mesh)
     bmesh.ops.remove_doubles(welded, verts=list(welded.verts), dist=.000001)
     bmesh.ops.recalc_face_normals(welded, faces=list(welded.faces))
+    # Curve fill starts as a fan of narrow triangles. Dissolve coplanar fill
+    # edges before beveling so a rounded boundary does not fold those internal
+    # diagonals into the enamel cap at acute tips.
+    bmesh.ops.dissolve_limit(welded, angle_limit=.00001,
+                            verts=list(welded.verts), edges=list(welded.edges),
+                            use_dissolve_boundaries=False)
+    bmesh.ops.recalc_face_normals(welded, faces=list(welded.faces))
+    weight = welded.edges.layers.float.new("bevel_weight_edge")
+    for edge in welded.edges:
+        # Round the front/back perimeter, not the short vertical joins between
+        # neighboring outline samples. Those joins globally collapse Blender's
+        # overlap clamp and erase the intended bevel even on broad strokes.
+        cap = any(abs(face.normal.z) >= .9 for face in edge.link_faces)
+        side = any(abs(face.normal.z) < .9 for face in edge.link_faces)
+        edge[weight] = 1.0 if cap and side else 0.0
     welded.to_mesh(mesh)
     welded.free()
     body_name = body.name
@@ -421,23 +465,58 @@ def make_charm(provider, source_logo, color, silver):
     body = bpy.data.objects.new(body_name, mesh)
     bpy.context.collection.objects.link(body)
     body["role"] = "logo"
+    body.data.materials.append(silver)
+    body["materialRoles"] = ["logo", "metal"]
     for polygon in body.data.polygons:
         polygon.use_smooth = abs(polygon.normal.z) < .9
+        polygon.material_index = 0 if abs(polygon.normal.z) >= .9 else 1
     bevel = body.modifiers.new("Inward micro bevel", "BEVEL")
-    bevel.width, bevel.segments = .014, 3
-    bevel.limit_method, bevel.angle_limit = "ANGLE", math.radians(28)
+    bevel.width, bevel.segments = .020, 5
+    bevel.material = 1
+    bevel.limit_method = "WEIGHT"
     bevel.use_clamp_overlap = True
+    bevel.loop_slide = False
     bevel.harden_normals = True
     bevel.affect = "EDGES"
-    top = max(y for contour in contours for x, y in contour)
-    # Use the silhouette's actual uppermost point as the attachment. An angled
-    # short silver neck reaches the centered suspension loop without filling
-    # any logo holes (e.g. OpenAI's knot or Cloudflare's offset cloud crest).
-    top_points = [(x, y) for contour in contours for x, y in contour if y > top - .018]
-    attachment_x = min(top_points, key=lambda p: abs(p[0]))[0]
-    start, end = Vector((attachment_x, top + .004, 0)), Vector((0, .90, 0))
+    # Very acute concave marks need a smaller radius than broad symbols.
+    # Keep the contour and all holes, reducing only the inward edge polish.
+    for attempt in range(14):
+        bpy.context.view_layer.update()
+        if invalid_cap_triangles(body) == 0:
+            break
+        bevel.width *= .5
+    else:
+        raise ValueError(f"Unable to bevel brand without cap folds: {provider}")
+    # Bake the same solid-to-solid attachment used by the real-time loader.
+    # The nearest front-cap triangle may be eccentric; the symbol's bounding
+    # box center/top can be empty space for a hollow or disconnected mark.
+    bpy.context.view_layer.update()
+    evaluated = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    cap_mesh = evaluated.to_mesh()
+    cap_mesh.calc_loop_triangles()
+    front_z = max(vertex.co.z for vertex in cap_mesh.vertices)
+    end = Vector((0, .887, 0))
+    target = Vector((end.x, end.y, front_z))
+    candidates = []
+    for triangle in cap_mesh.loop_triangles:
+        points = [cap_mesh.vertices[index].co.copy() for index in triangle.vertices]
+        if not all(abs(point.z - front_z) < .00001 for point in points):
+            continue
+        a, b, c = points
+        if (b - a).cross(c - a).length_squared < 1e-16:
+            continue
+        nearest = closest_point_on_tri(target, a, b, c)
+        ab, bc, ca = (b - a).length, (c - b).length, (a - c).length
+        inside = (a * bc + b * ca + c * ab) / (ab + bc + ca)
+        delta = inside - nearest
+        point = nearest + delta * min(.85, .018 / delta.length) if delta.length > 0 else nearest
+        candidates.append(((point - target).length_squared, Vector((point.x, point.y, 0))))
+    evaluated.to_mesh_clear()
+    if not candidates:
+        raise ValueError(f"No solid front cap for brand attachment: {provider}")
+    start = min(candidates, key=lambda value: value[0])[1]
     direction = end - start
-    bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=.024, depth=direction.length,
+    bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=.024, depth=direction.length,
                                        location=(start + end) / 2)
     neck = bpy.context.object
     neck.name = f"charm-{provider}-attachment"
@@ -468,11 +547,29 @@ def point_light(name, position, energy, size, target, color=(1, 1, 1)):
     return obj
 
 
+def configure_render_device(scene):
+    scene.cycles.device = "CPU"
+    preferences = bpy.context.preferences.addons["cycles"].preferences
+    try:
+        preferences.compute_device_type = "METAL"
+        devices = preferences.get_devices_for_type("METAL")
+        if any(device.type == "METAL" for device in devices):
+            for device in devices:
+                device.use = device.type == "METAL"
+            scene.cycles.device = "GPU"
+            print("KEYNEST_RENDER_DEVICE Metal", flush=True)
+            return
+    except (TypeError, RuntimeError):
+        pass
+    print("KEYNEST_RENDER_DEVICE CPU", flush=True)
+
+
 def setup_render():
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
-    scene.cycles.samples = 48
+    scene.cycles.samples = 72
     scene.cycles.use_denoising = True
+    configure_render_device(scene)
     scene.cycles.max_bounces = 10
     scene.cycles.transmission_bounces = 8
     scene.render.resolution_percentage = 100
@@ -482,15 +579,32 @@ def setup_render():
     scene.world.color = (.4, .4, .4)
     scene.world.use_nodes = True
     scene.world.node_tree.nodes.get("Background").inputs["Color"].default_value = (.72, .80, .88, 1)
-    scene.world.node_tree.nodes.get("Background").inputs["Strength"].default_value = .35
-    backdrop = material("Studio warm-white matte", "E7EDF2", roughness=.68)
-    bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, -.42))
+    scene.world.node_tree.nodes.get("Background").inputs["Strength"].default_value = .10
+    backdrop = material("Studio warm-white matte", "F6F7FA", roughness=.72)
+    backdrop.node_tree.nodes.get("Principled BSDF").inputs["Emission Color"].default_value = (.36, .37, .39, 1)
+    backdrop.node_tree.nodes.get("Principled BSDF").inputs["Emission Strength"].default_value = .40
+    bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, -.48))
     floor = bpy.context.object
     floor.name = "preview-only-backdrop"
     floor.data.materials.append(backdrop)
-    point_light("Studio key softbox", (-3, 4, 5), 500, 4, (0, 0, 0))
-    point_light("Studio cool edge", (4, 1, 3), 330, 2, (0, 0, 0), (.77, .89, 1))
-    point_light("Studio long rim", (-2, -3, 2), 190, 2, (0, 0, 0))
+    point_light("Studio key softbox", (-3, 4, 5), 420, 3, (0, 0, 0))
+    point_light("Studio cool edge", (4, 1, 3), 300, 1.4, (0, 0, 0), (.82, .91, 1))
+    point_light("Studio long rim", (-2, -3, 2), 150, 1.5, (0, 0, 0))
+    strip = point_light("Studio silver ribbon", (1.2, 3, 4), 160, .6, (0, .2, 0))
+    strip.data.shape = "RECTANGLE"
+    strip.data.size_y = 3.4
+    # A narrow dark studio flag is visible only in glossy reflections. It adds
+    # separation to the platinum edge without darkening the white background.
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(-.85, 0, -.28))
+    flag = bpy.context.object
+    flag.name = "preview-only-dark-reflection-strip"
+    flag.dimensions = (.22, 4, 1)
+    flag.data.materials.append(material("Studio reflection flag", "17212D", roughness=.7))
+    flag.visible_camera = False
+    flag.visible_diffuse = False
+    flag.visible_shadow = False
+    flag.visible_transmission = False
+    flag.hide_render = True
     camera_data = bpy.data.cameras.new("Preview camera")
     camera = bpy.data.objects.new("Preview camera", camera_data)
     bpy.context.collection.objects.link(camera)
@@ -515,7 +629,7 @@ def duplicate_key(parts, logo, name, location, color, angle=0):
     bpy.context.collection.objects.link(root)
     root.location = location
     root.rotation_euler.z = angle
-    glass = material(f"Glass {name}", color, roughness=.105, transmission=1)
+    glass = material(f"Glass {name}", color, roughness=.085, transmission=1)
     for original in parts + ([logo] if logo else []):
         obj = original.copy()
         obj.data = original.data.copy()
@@ -533,7 +647,7 @@ def duplicate_charm(parts, name, location, angle=0):
     root = bpy.data.objects.new(name, None)
     bpy.context.collection.objects.link(root)
     root.location = location
-    root.rotation_euler = (math.radians(-3), math.radians(-8), angle)
+    root.rotation_euler = (math.radians(-3), math.radians(8), angle)
     for original in parts:
         obj = original.copy()
         obj.data = original.data.copy()
@@ -544,21 +658,57 @@ def duplicate_charm(parts, name, location, angle=0):
     return root
 
 
+def render_individuals(parts, charms, camera, image_size, study=False):
+    """Render authored geometry, one local PNG per item; no external textures."""
+    if image_size < 1024 or image_size > 4096:
+        raise ValueError("Individual review renders must be 1024-4096 pixels")
+    directory = OUT / "previews" / "individual"
+    directory.mkdir(parents=True, exist_ok=True)
+    for obj in bpy.context.scene.objects:
+        if obj.type in {"MESH", "CURVE", "FONT"} and obj.name != "preview-only-backdrop":
+            obj.hide_render = True
+    camera.rotation_euler = (math.radians(12), math.radians(-20), math.radians(-4))
+    bpy.data.objects["preview-only-dark-reflection-strip"].hide_render = False
+    for provider, model in charms.items():
+        hero = duplicate_charm(model, f"Review {provider}", (0, 0, 0))
+        camera.location = Vector((0, .20, 0)) + camera.rotation_euler.to_matrix() @ Vector((0, 0, 8))
+        render(directory / f"brand-{provider}.png", camera, image_size, image_size, 2.04)
+        for child in hero.children:
+            child.hide_render = True
+        print(f"KEYNEST_REVIEW_IMAGE {provider}", flush=True)
+    bpy.data.objects["preview-only-dark-reflection-strip"].hide_render = True
+    for palette_id, palette in PALETTES.items():
+        if study and palette_id != "ice":
+            continue
+        hero = duplicate_key(parts, None, f"Review glass {palette_id}", (0, 0, 0), palette["color"], math.radians(-6))
+        camera.location = camera.rotation_euler.to_matrix() @ Vector((0, 0, 8))
+        render(directory / f"glass-{palette_id}.png", camera, image_size, image_size, 2.7)
+        for child in hero.children:
+            child.hide_render = True
+        print(f"KEYNEST_REVIEW_IMAGE glass-{palette_id}", flush=True)
+
+
 def main():
     global OUT
     parser = argparse.ArgumentParser()
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--render-charms", action="store_true", help="Render only the independent brand contact sheet")
+    parser.add_argument("--output", type=Path, help="Write a separate study without replacing runtime assets")
+    parser.add_argument("--render-individual", action="store_true", help="Render each selected brand and palette separately")
+    parser.add_argument("--image-size", type=int, default=1536)
+    parser.add_argument("--samples", type=int, default=72)
     parser.add_argument("--quality-study", action="store_true", help="Build four sample brands into previews/quality-study only")
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
-    if args.quality_study:
+    if args.output:
+        OUT = args.output.resolve()
+    elif args.quality_study:
         OUT = OUT / "previews" / "quality-study"
     for directory in (OUT, OUT / "logos", OUT / "charms", OUT / "source", OUT / "previews", OUT / "previews" / "masks"):
         directory.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
-    glass = material("Glass ice — recolorable", PALETTES["ice"]["color"], roughness=.105, transmission=1)
-    silver = material("Brushed platinum", "BFC9D2", metal=.92, roughness=.21)
+    glass = material("Glass ice — recolorable", PALETTES["ice"]["color"], roughness=.085, transmission=1)
+    silver = material("Polished platinum", "DBE2E8", metal=.95, roughness=.16)
     parts = make_body(glass, silver)
     triangle_count = write_mesh(OUT / "glass-key-v1.mesh.json", parts)
     print(f"KEYNEST_BASE_READY {OUT / 'glass-key-v1.mesh.json'} triangles={triangle_count}", flush=True)
@@ -567,13 +717,14 @@ def main():
     logos, charms = {}, {}
     manifest = {"schemaVersion": 1, "generator": f"Blender {bpy.app.version_string}",
         "model": "glass-key-v1.mesh.json", "anchor": [0, 1, 0], "logoCenter": [0, .43, .167],
-        "dimensions": [1.12, 2.2, .308], "baseTriangles": triangle_count,
-        "materials": {"glass": {"metalness": 0, "roughness": .105, "ior": 1.46, "transmission": 1},
-                      "metal": {"color": "BFC9D2", "metalness": .92, "roughness": .21},
+        "dimensions": [1.134, 2.214, .345], "baseTriangles": triangle_count,
+        "materials": {"glass": {"metalness": 0, "roughness": .085, "ior": 1.46, "transmission": 1},
+                      "metal": {"color": "DBE2E8", "metalness": .95, "roughness": .16},
                       "logo": {"metalness": .15, "roughness": .20}},
         "colorSpace": "sRGB",
-        "charmProfile": {"thickness": .22, "bevel": .014, "bevelMethod": "inward-solid-edge"},
-        "charmMaterials": {"logo": {"metalness": .06, "roughness": .22, "ior": 1.46, "transmission": 0, "coat": .28}},
+        "artRevision": "2026-10-07-refined-enamel",
+        "charmProfile": {"thickness": .27, "maximumBevel": .020, "bevelSegments": "2-5-adaptive", "bevelMethod": "inward-solid-edge-metal-rim-with-cap-fold-guard"},
+        "charmMaterials": {"logo": {"metalness": .04, "roughness": .16, "ior": 1.46, "transmission": 0, "coat": .45, "coatRoughness": .12}},
         "palettes": PALETTES, "providers": {}}
     for path in sorted(ICONS.glob("*.png")):
         if args.quality_study and path.stem not in {"openai", "anthropic", "google", "cloudflare"}:
@@ -584,11 +735,17 @@ def main():
         logo_material.node_tree.nodes.get("Principled BSDF").inputs["Base Color"].default_value = linear_rgba(color)
         logo_material.diffuse_color = linear_rgba(color)
         count = write_mesh(OUT / "logos" / f"{path.stem}.mesh.json", [logo])
-        if count + triangle_count > 15000:
-            raise ValueError(f"Triangle budget exceeded for {path.stem}: {count + triangle_count}")
+        if count >= 15000:
+            raise ValueError(f"Relief exceeds triangle budget for {path.stem}: {count}")
         logos[path.stem] = logo
         charm_parts = make_charm(path.stem, logo, color, silver)
         charm_count = write_mesh(OUT / "charms" / f"{path.stem}.mesh.json", charm_parts)
+        for segments in (4, 3, 2):
+            if charm_count < 15000:
+                break
+            charm_parts[0].modifiers["Inward micro bevel"].segments = segments
+            bpy.context.view_layer.update()
+            charm_count = write_mesh(OUT / "charms" / f"{path.stem}.mesh.json", charm_parts)
         if charm_count >= 15000:
             raise ValueError(f"Charm exceeds triangle budget: {path.stem} {charm_count}")
         charms[path.stem] = charm_parts
@@ -600,6 +757,8 @@ def main():
         manifest["providers"][path.stem] = {"mesh": f"logos/{path.stem}.mesh.json", "color": color,
             "charm": f"charms/{path.stem}.mesh.json", "charmTriangles": charm_count,
             "rgba": [round(v, 6) for v in rgba(color)],
+            "bevelSegments": charm_parts[0].modifiers["Inward micro bevel"].segments,
+            "bevelWidth": charm_parts[0].modifiers["Inward micro bevel"].width,
             "extraction": extraction,
             "triangles": count, "contours": contour_count, "source": f"../ProviderIcons/{path.name}",
             "sourceSHA256": hashlib.sha256(path.read_bytes()).hexdigest()}
@@ -610,6 +769,7 @@ def main():
         obj.hide_render = True
         obj.hide_viewport = True
     camera = setup_render()
+    bpy.context.scene.cycles.samples = args.samples
     # A separate collection of authored geometry remains in the source .blend.
     hero = duplicate_key(parts, None, "Hero generic ice key", (0, 0, .03), PALETTES["ice"]["color"], math.radians(-9))
     bpy.context.scene.render.resolution_x = 900
@@ -639,6 +799,7 @@ def main():
     for i, provider in enumerate(("openai", "anthropic", "google", "cloudflare")):
         duplicate_charm(charms[provider], f"Independent brand charm {provider}",
             ((i - 1.5) * 1.85, 0, .03), math.radians(-5 + i * 3))
+    bpy.data.objects["preview-only-dark-reflection-strip"].hide_render = False
     camera.data.ortho_scale = 8.4
     bpy.context.scene.render.resolution_x = 2000
     bpy.context.scene.render.resolution_y = 850
@@ -646,6 +807,8 @@ def main():
     if args.render or args.render_charms:
         render(OUT / "previews" / "four-brand-charms.png", camera, 2000, 850, 8.4)
         print("KEYNEST_RENDERS_READY", flush=True)
+    if args.render_individual:
+        render_individuals(parts, charms, camera, args.image_size, args.quality_study)
 
 
 if __name__ == "__main__":

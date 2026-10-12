@@ -10,7 +10,7 @@ These are build-time assets made with **Blender 5.2.2 LTS**, locally, without do
 
 ## Files and runtime contract
 
-- `glass-key-v1.mesh.json`: original generic key, continuous glass head/shaft, a real through-hole and separate metal details; 5,376 triangles.
+- `glass-key-v1.mesh.json`: original generic key, continuous glass head/shaft, a real through-hole and separate metal details; 9,760 triangles.
 - `charms/<provider-id>.mesh.json`: complete independent brand pendant, including a small metal suspension ring. All 61 provider IDs are listed in `manifest.json`.
 - `logos/<provider-id>.mesh.json`: small relief version retained as a reusable source asset. The current brand display uses `charms`, not this relief on a key.
 - `manifest.json`: generic mesh, six palettes, material suggestions, per-provider `charm`, `charmTriangles`, `mesh`, `rgba`, original PNG SHA-256, and silhouette extraction method.
@@ -23,13 +23,13 @@ Coordinates are right-handed, **Y up, front +Z**. Every file has the same `ancho
 
 | Asset | Extent and placement | Roles |
 | --- | --- | --- |
-| Generic key | 1.12 wide × 2.20 tall; glass thickness 0.28, metal details to 0.307 | `glass`, `metal` |
-| Brand pendant | Symbol longest side about 1.35; body thickness 0.22; top edge about Y=0.795; silver loop centered at Y=1 | `logo`, `metal` |
+| Generic key | 1.134 wide × 2.214 tall; glass thickness 0.32, metal details to 0.345 | `glass`, `metal` |
+| Brand pendant | Symbol longest side about 1.35; body thickness 0.27; top edge about Y=0.795; silver loop centered at Y=1 | `logo`, `metal` |
 | Small reusable relief | Center `[0, 0.43, 0.167]`, longest side about 0.645; thickness 0.038 | `logo` |
 
-Each complete brand pendant is below 15,000 triangles (the largest is 13,212). `rgba` uses **sRGB 0…1** with alpha 1; it must not be converted to linear values before constructing an sRGB color in AppKit. Opaque brand enamel with a restrained clear coat uses that representative color independently of the custom-key glass palette. Gemini `3186FF`, Claude `D97757`, Cloudflare `F38020`, DeepSeek `4D6BFE` and Hugging Face `FFD21E` match the dominant colors in the attributed source PNGs. Multicolor brands are intentionally reduced to a single representative hue in this mesh-only format; there is no claim of preserving a logo's original gradient or all painted details.
+Each complete brand pendant is below 15,000 triangles (the largest is 13,292). `rgba` uses **sRGB 0…1** with alpha 1; it must not be converted to linear values before constructing an sRGB color in AppKit. Opaque brand enamel with a restrained clear coat uses that representative color independently of the custom-key glass palette. Gemini `3186FF`, Claude `D97757`, Cloudflare `F38020`, DeepSeek `4D6BFE` and Hugging Face `FFD21E` match the dominant colors in the attributed source PNGs. Multicolor brands are intentionally reduced to a single representative hue in this mesh-only format; there is no claim of preserving a logo's original gradient or all painted details.
 
-The refined contour pipeline samples at 512 pixels, retaining 640-pixel sources at 640 rather than reducing them. It traces an antialiased, subpixel threshold field and simplifies with an error tolerance of 0.125% of the sampling resolution. Shared mesh vertices are welded before applying a 0.014 **inward** edge bevel; the previous outward Curve bevel thickened fine strokes and narrowed holes. Planar front/back normals stay flat while side/bevel shading is smooth. Extra polygons are concentrated where curvature requires them, and the triangle budget is checked during generation. Low-resolution upstream favicons still limit recoverable detail; upsampling is not represented as newly recovered source information.
+The refined contour pipeline samples at 512 pixels, retaining 640-pixel sources at 640 rather than reducing them. It traces an antialiased, subpixel threshold field and simplifies with an error tolerance of 0.125% of the sampling resolution. Shared mesh vertices are welded before a perimeter-only **inward** bevel is applied. The maximum requested radius is 0.020, with five segments normally and three for the most complex mark to respect the triangle budget. Blender clamps overlap, and the generator reduces the radius further whenever a front/back cap triangle would fold. Both the evaluated mesh and the rounded export are checked; the exact requested radius and segment count are recorded per provider. Very fine marks therefore retain a restrained micro bevel rather than sacrificing their silhouette. Planar front/back enamel caps share one `logo` mesh; the polished metal sidewalls and rounded edges use `metal`. The original holes and outer silhouette remain intact. Low-resolution upstream favicons still limit recoverable detail; upsampling is not represented as newly recovered source information.
 
 ## Silhouette audit
 
@@ -49,7 +49,22 @@ From the repository root, using the installed Blender application:
 python3 macos/scripts/blender/make_silhouette_contact_sheet.py
 ```
 
-Omit `--render` to regenerate the meshes and both source scenes only. `--render-charms` renders only the four-brand comparison. Blender uses its bundled NumPy; the optional contact-sheet helper uses Pillow, as do the existing icon acquisition scripts. No add-ons or model downloads are needed. The scripts only read attributed `ProviderIcons/*.png` and write `KeychainArt`.
+Omit `--render` to regenerate the meshes and both source scenes only. `--render-charms` renders only the four-brand comparison. Blender uses its bundled NumPy; the optional contact-sheet helper uses Pillow, as do the existing icon acquisition scripts. No add-ons or model downloads are needed. The model generator reads attributed `ProviderIcons/*.png` and writes `KeychainArt` by default, or the explicit `--output` directory. The gallery helper additionally reads the public provider catalog and upstream attribution records; neither accesses user data.
+
+The 2026-10-07 refinement also increases the generic key’s rounded-edge segments, through-hole detail and metal ring resolution. The brand connection runs from an actual solid cap triangle into the suspension ring, including eccentric and hollow symbols. The PNG previews use Blender Cycles with a white studio, softboxes, polished enamel and platinum; the App imports positions/normals/material roles, not Blender materials or rendered refraction.
+
+To build all **67 separate 1536 × 1536 review images** outside the tracked resource directory, then package the offline gallery and ZIP:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python-exit-code 1 \
+  --python macos/scripts/blender/build_keychain_art.py -- \
+  --output macos/dist/keychain-art-build --render-individual --image-size 1536 --samples 64
+python3 macos/scripts/blender/make_review_gallery.py \
+  --art-dir macos/dist/keychain-art-build \
+  --output macos/dist/keychain-art-review --zip
+```
+
+The gallery includes clickable originals, six readable overview pages, local search, the mesh manifest and upstream attribution records. `--zip` writes a sibling archive and `.zip.sha256` checksum, outside the gallery itself. It makes no remote requests. These are Blender offline design previews, **not screenshots of the App’s real-time rendering**. Cycles uses Metal where it is available, without saving device preferences; otherwise it uses the CPU. `--quality-study` limits the build to four representative brands and the ice key; pass `--study` to the gallery helper for that smaller set. Prior runtime meshes remain recoverable from Git history; generated high-resolution galleries stay in ignored `dist/`.
 
 To regenerate the 15-brand 3D audit from the saved source scene, run Blender with the same flags and `--python macos/scripts/blender/render_charm_audit.py`.
 

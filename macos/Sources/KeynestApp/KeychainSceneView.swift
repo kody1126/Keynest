@@ -160,7 +160,11 @@ private struct KeychainSceneSurface: NSViewRepresentable {
     private var disposed = false
 
     override init(frame: NSRect, options: [String: Any]? = nil) {
-        super.init(frame: frame, options: options)
+        var renderOptions = options ?? [:]
+        // Physically based materials require Metal; do not silently fall back
+        // to Blinn shading on a different macOS renderer.
+        renderOptions[SCNView.Option.preferredRenderingAPI.rawValue] = SCNRenderingAPI.metal.rawValue
+        super.init(frame: frame, options: renderOptions)
         backgroundColor = .clear
         allowsCameraControl = false
         autoenablesDefaultLighting = false
@@ -171,7 +175,7 @@ private struct KeychainSceneSurface: NSViewRepresentable {
         scene = SCNScene()
         scene?.background.contents = NSColor.clear
         scene?.lightingEnvironment.contents = Self.environmentImage
-        scene?.lightingEnvironment.intensity = 0.82
+        scene?.lightingEnvironment.intensity = 0.90
         scene?.rootNode.addChildNode(assembly)
         installCameraAndLights()
         setAccessibilityLabel("钥匙串")
@@ -571,26 +575,31 @@ private struct KeychainSceneSurface: NSViewRepresentable {
         camera.orthographicScale = 2.24
         camera.zNear = 0.1; camera.zFar = 40
         camera.wantsHDR = true
-        camera.exposureOffset = -0.65
+        camera.exposureOffset = -0.40
         camera.wantsExposureAdaptation = false
+        // Preserve the small contours while moving. These are product objects,
+        // not a photographic effect that needs bloom or a blurred focus plane.
+        camera.wantsDepthOfField = false
+        camera.motionBlurIntensity = 0
+        camera.bloomIntensity = 0
         cameraNode.camera = camera
         cameraNode.position = SCNVector3(0, 0, 9)
         cameraNode.look(at: SCNVector3(0, 0.04, 0))
         scene?.rootNode.addChildNode(cameraNode)
         pointOfView = cameraNode
         let key = SCNNode(); key.light = SCNLight(); key.light?.type = .directional
-        key.light?.intensity = 650; key.light?.color = NSColor(white: 1, alpha: 1)
+        key.light?.intensity = 580; key.light?.color = NSColor(white: 1, alpha: 1)
         key.eulerAngles = SCNVector3(-0.65, -0.45, 0)
         key.light?.castsShadow = true; key.light?.shadowMode = .deferred
         key.light?.shadowRadius = 5; key.light?.shadowSampleCount = 8
-        key.light?.shadowMapSize = CGSize(width: 1024, height: 1024)
+        key.light?.shadowMapSize = CGSize(width: 2048, height: 2048)
         key.light?.shadowColor = NSColor(calibratedWhite: 0.25, alpha: 0.16)
         scene?.rootNode.addChildNode(key)
         let fill = SCNNode(); fill.light = SCNLight(); fill.light?.type = .omni
-        fill.light?.intensity = 220; fill.light?.color = NSColor(calibratedRed: 0.73, green: 0.88, blue: 1, alpha: 1)
+        fill.light?.intensity = 150; fill.light?.color = NSColor(srgbRed: 0.86, green: 0.93, blue: 1, alpha: 1)
         fill.position = SCNVector3(3, 2, 4); scene?.rootNode.addChildNode(fill)
         let ambient = SCNNode(); ambient.light = SCNLight(); ambient.light?.type = .ambient
-        ambient.light?.intensity = 100; scene?.rootNode.addChildNode(ambient)
+        ambient.light?.intensity = 35; scene?.rootNode.addChildNode(ambient)
     }
 
     private var charmSpan: Double { Double(max(0, charms.count - 1)) * (charms.count > 5 ? 0.48 : 0.62) }
@@ -600,7 +609,7 @@ private struct KeychainSceneSurface: NSViewRepresentable {
         stopClock(); cancelDrag(); hoveredIndex = nil
         assembly.childNodes.forEach { $0.removeFromParentNode() }
         pendants.removeAll()
-        let silver = Self.metal(NSColor(calibratedWhite: 0.80, alpha: 1), roughness: 0.14)
+        let silver = Self.metal(NSColor(srgbRed: 0.84, green: 0.86, blue: 0.88, alpha: 1), roughness: 0.16)
         let radius = ringRadius
         // Only the lower open arc enters the scene, like a hanging clasp seen
         // close up. Its upper ends continue beyond the viewport, never forming
@@ -673,7 +682,9 @@ private struct KeychainSceneSurface: NSViewRepresentable {
 
     private static func loop(radius: CGFloat, pipe: CGFloat, material: SCNMaterial) -> SCNNode {
         let torus = SCNTorus(ringRadius: radius, pipeRadius: pipe)
-        torus.ringSegmentCount = 40; torus.pipeSegmentCount = 12; torus.materials = [material]
+        // Modest extra curvature samples keep the narrow studio reflections
+        // continuous on chain links without subdividing the logo meshes.
+        torus.ringSegmentCount = 48; torus.pipeSegmentCount = 16; torus.materials = [material]
         let node = SCNNode(geometry: torus); node.eulerAngles.x = .pi / 2
         return node
     }
@@ -690,26 +701,22 @@ private struct KeychainSceneSurface: NSViewRepresentable {
         let glass = SCNMaterial()
         glass.lightingModel = .physicallyBased
         glass.diffuse.contents = tint(charm.colorName)
-        glass.metalness.contents = 0.08
-        glass.roughness.contents = 0.10
-        glass.clearCoat.contents = 1.0
-        glass.clearCoatRoughness.contents = 0.05
-        glass.transparency = opaque ? 1 : 0.66
+        glass.metalness.contents = 0
+        glass.roughness.contents = 0.12
+        glass.clearCoat.contents = 0.55
+        glass.clearCoatRoughness.contents = 0.10
+        glass.transparency = opaque ? 1 : 0.76
         glass.transparencyMode = .dualLayer
-        glass.fresnelExponent = 2.8
-        glass.reflective.contents = environmentImage
-        glass.reflective.intensity = 0.48
+        // This is tinted, translucent glass styling, not ray-traced refraction.
+        // PBR ignores reflective/fresnelExponent: use the shared environment.
         let rgba = KeychainMeshAsset.brandColor(charm.brandID) ?? [0.12, 0.20, 0.26, 1]
-        let logo = metal(NSColor(srgbRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: 1), roughness: 0.22)
-        logo.metalness.contents = 0.10
-        logo.clearCoat.contents = 1.0
-        logo.clearCoatRoughness.contents = 0.06
-        logo.roughness.contents = 0.24
+        let logo = metal(NSColor(srgbRed: rgba[0], green: rgba[1], blue: rgba[2], alpha: 1), roughness: 0.18)
+        logo.metalness.contents = 0.04
+        logo.clearCoat.contents = 0.45
+        logo.clearCoatRoughness.contents = 0.12
         // An opaque enamel face preserves small cutouts and color. Glass is
         // reserved for the unbranded key; see-through logos doubled their edges.
         logo.transparency = 1
-        logo.transparencyMode = .dualLayer
-        logo.fresnelExponent = 2.0
         if let brandAsset {
             let attachment = brandAsset.brandAttachment()
             addMeshes(brandAsset, to: model, glass: glass, silver: silver, logo: logo,
@@ -797,30 +804,42 @@ private struct KeychainSceneSurface: NSViewRepresentable {
         let material = SCNMaterial(); material.lightingModel = .physicallyBased
         material.diffuse.contents = color; material.metalness.contents = 0.95
         material.roughness.contents = roughness
-        material.locksAmbientWithDiffuse = true
         return material
     }
 
     /// Original studio softboxes, generated in memory. No video frames, web
     /// textures, file caches or user data are used for the metal reflections.
     private static let environmentImage: NSImage = {
-        let image = NSImage(size: NSSize(width: 1024, height: 512))
-        image.lockFocus()
-        let gradient = NSGradient(colorsAndLocations:
-            (NSColor(calibratedWhite: 0.25, alpha: 1), 0),
-            (NSColor(calibratedWhite: 0.85, alpha: 1), 0.22),
-            (NSColor.white, 0.31),
-            (NSColor(calibratedWhite: 0.32, alpha: 1), 0.48),
-            (NSColor(calibratedRed: 0.76, green: 0.85, blue: 0.92, alpha: 1), 0.68),
-            (NSColor.white, 0.78),
-            (NSColor(calibratedWhite: 0.34, alpha: 1), 1))!
-        gradient.draw(in: NSRect(x: 0, y: 0, width: 1024, height: 512), angle: 0)
-        NSColor(white: 1, alpha: 0.85).setFill()
-        NSBezierPath(roundedRect: NSRect(x: 170, y: 300, width: 180, height: 155), xRadius: 22, yRadius: 22).fill()
-        NSColor(white: 1, alpha: 0.70).setFill()
-        NSBezierPath(roundedRect: NSRect(x: 690, y: 100, width: 95, height: 320), xRadius: 18, yRadius: 18).fill()
-        image.unlockFocus()
-        return image
+        // A fixed-resolution, sRGB 2:1 environment makes the specular outline
+        // independent of the screen scale used when the scene is first opened.
+        // Dark studio gaps are as important as white softboxes for silver: a
+        // nearly white environment erases the visible curvature of each link.
+        let width = 1536, height = 768
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let context = CGContext(data: nil, width: width, height: height,
+                                      bitsPerComponent: 8, bytesPerRow: width * 4,
+                                      space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            return NSImage(size: NSSize(width: width, height: height))
+        }
+        let backdrop = CGGradient(colorSpace: space,
+            colorComponents: [0.18, 0.20, 0.24, 1, 0.38, 0.41, 0.45, 1, 0.16, 0.18, 0.22, 1],
+            locations: [0, 0.52, 1], count: 3)!
+        context.drawLinearGradient(backdrop, start: .zero, end: CGPoint(x: 0, y: height), options: [])
+
+        func softbox(_ rect: CGRect, brightness: CGFloat, feather: CGFloat) {
+            context.saveGState()
+            context.setShadow(offset: .zero, blur: feather,
+                              color: CGColor(gray: brightness, alpha: 0.32))
+            context.setFillColor(CGColor(gray: brightness, alpha: 1))
+            context.addPath(CGPath(roundedRect: rect, cornerWidth: 14, cornerHeight: 14, transform: nil))
+            context.fillPath()
+            context.restoreGState()
+        }
+        softbox(CGRect(x: 215, y: 265, width: 245, height: 365), brightness: 1, feather: 26)
+        softbox(CGRect(x: 935, y: 130, width: 92, height: 520), brightness: 0.94, feather: 18)
+        softbox(CGRect(x: 610, y: 655, width: 330, height: 62), brightness: 0.80, feather: 24)
+        guard let bitmap = context.makeImage() else { return NSImage(size: NSSize(width: width, height: height)) }
+        return NSImage(cgImage: bitmap, size: NSSize(width: width, height: height))
     }()
 
     private func clamp(_ value: Double, _ lower: Double, _ upper: Double) -> Double {
