@@ -21,45 +21,86 @@
 
 <p align="center">适用于 Apple Silicon · 当前界面为中文 · 免费开源</p>
 
-> **源码预览：** `main` 已包含 0.12.0 候选版的实时卡片排序与精修 Blender 挂件，最终原生界面验收尚未完成；可下载安装包仍为 0.11.1。[验证记录](macos/verification.md) · [模型预览与源文件](macos/Resources/KeychainArt/README.md)
+<p align="center">
+  <a href="docs/images/keyring.png"><img src="docs/images/keyring.png" width="1000" alt="Keynest 首页钥匙串：OpenAI、Claude、DeepSeek、Gemini 和 Cloudflare 立体挂件，下方为平台密钥卡片"></a>
+</p>
+<p align="center"><sub>Keynest 0.11.1 · 点击挂件，取用常用密钥。</sub></p>
+
+一个模型平台有几把 Key，一个 Agent 又需要搜索、浏览器和数据库。Keynest 把这些凭据收进同一个本地密钥库：保存一次，下次打开就能找到。
 
 <p align="center">
-  <img src="docs/images/home.jpg" width="1000" alt="Keynest 首页：按平台展示密钥，以账号和环境区分同平台的多把密钥，并直接复制">
+  <a href="#打开首页找到就能复制">首页取用</a> ·
+  <a href="#同一平台多把密钥也分得清">多密钥管理</a> ·
+  <a href="#常用平台选好再粘贴">平台预设</a> ·
+  <a href="#按工具整理一组密钥">工具与 Skill</a> ·
+  <a href="#把常用入口摆成自己的样子">个性化布局</a>
 </p>
-<p align="center"><sub>真实 App 截图，使用本地开发测试 Demo 的虚构数据；公开安装包不包含 Demo。</sub></p>
 
-## 少翻几个网站，多留一点时间
+## 打开首页，找到就能复制
 
-一个模型平台有几把 Key，一个 Agent 又要连接搜索、浏览器和数据库。Keynest 把这些凭据放在同一个本地密钥库里：保存一次，下次用的时候打开首页，找到平台，复制需要的那一把。
-
-- **打开就能取用** — 首页卡片按内容高度紧凑排列，右上角搜索，支持常用筛选；无需先进入编辑表单。
-- **点击挂件，直接复制** — 「钥匙串」保留立体品牌珐琅挂件与六色玻璃钥匙，移除底部平台按钮。为挂件选定密钥后，点击即可复制；同平台多把密钥时，先按名称、账号与环境选择，避免拿错。
-- **定制常用入口** — 点击金属挂扣或「定制」，从 61 个品牌及已有自定义平台中选择 0–8 个挂件并调整顺序；拖动回弹、复位和收起仍然可用。
-- **按自己的顺序排首页** — 「[编辑布局](docs/images/home-layout.jpg)」时整张卡片跟随鼠标；0.12 源码候选版增加周围卡片实时让位与落位动画；也可用前移、后移按钮调整，再保存。支持取消和恢复默认。自动挂件会跟随首页前 3 个平台。
-- **多把密钥，也分得清** — 用账号、环境和 API 地址区分个人、团队、开发与正式用途。
-- **常见平台，选好再粘贴** — 内置 61 个服务商预设，覆盖 OpenAI、Claude、Gemini、DeepSeek、Cloudflare、GitHub 等，附品牌图标和官方 API 入口。
-- **按工具整理一组密钥** — 25 个工具与 Skill 模板，覆盖 Cursor、Cline、Dify、n8n 等；一把密钥可供多个工具关联使用。
-- **Touch ID 快速解锁** — 支持的 Mac 可使用系统指纹验证，主密码始终保留为备用。
-- **带着备份，留在本地** — 导出加密备份，也能将备份中的条目合并进现有密钥库。
-
-钥匙串在本机渲染，只接收平台名称、图标和颜色等展示信息，不持有密钥正文。挂件绑定和首页顺序随密钥库加密保存，也包含在加密备份里；支持系统的「减少动态效果」和「减少透明度」。
-
-<details>
-<summary><strong>看看工具模板</strong></summary>
+按平台展示密钥，卡片随内容高度紧凑排列。搜索名称、平台、账号或环境，或者切换到「常用」，直接复制需要的那一把。钥匙串可以收起，为更多平台留出空间。
 
 <p align="center">
-  <img src="docs/images/tool-templates.jpg" width="720" alt="Keynest 工具模板选择器，展示 Cursor、Cline、Roo Code、Continue 等模板">
+  <a href="docs/images/home.png"><img src="docs/images/home.png" width="1000" alt="紧凑首页：OpenAI 和 DeepSeek 各有两把密钥，Claude 与 Gemini 卡片独立排列，右上角提供搜索和编辑布局"></a>
 </p>
 
-为工具复用已有密钥，或补上它需要的新密钥；Keynest 负责整理，不会自动修改这些工具的配置。[查看平台目录](research/api-catalog-0.7.md) · [查看工具模板](research/skill-agent-templates-0.7.md)
+## 同一平台，多把密钥也分得清
 
-</details>
+个人账号、团队账号、开发环境、正式环境可以分别保存。详情页把 **密钥、API 地址、账号、环境和使用它的工具**放在一起；无需显示密钥正文，也能完成复制。一条记录可以关联多个工具，更新时不用逐个修改副本。
+
+<p align="center">
+  <a href="docs/images/key-details.png"><img src="docs/images/key-details.png" width="1000" alt="OpenAI 密钥详情：左侧区分个人正式密钥与开发环境密钥，右侧显示掩码密钥、API 地址及关联工具"></a>
+</p>
+
+## 常用平台，选好再粘贴
+
+内置 **61 个平台预设**，从模型推理、图像语音，到搜索采集、Agent 工具、开发数据和消息协作。每个预设附品牌图标与官方 API 入口；选择平台后保存自己的密钥，也可以填写自定义服务商。
+
+<p align="center">
+  <a href="docs/images/providers.png"><img src="docs/images/providers.png" width="800" alt="API 平台选择器：OpenAI、Claude、Gemini、DeepSeek、Qwen、Kimi 等品牌图标，以及六类用途筛选"></a>
+</p>
+
+[查看完整平台目录与官方来源](research/api-catalog-0.7.md)
+
+## 按工具整理一组密钥
+
+内置 **25 个工具与 Skill 模板**，覆盖 Cursor、Cline、Claude Code、Dify、n8n、LangGraph 等。为一个工具复用已有密钥，或补上它需要的新密钥；以后从侧栏进入这个工具，就能找到相关凭据。
+
+<table>
+  <tr>
+    <th width="50%">客户端与编程工具</th>
+    <th width="50%">Agent 与工作流</th>
+  </tr>
+  <tr>
+    <td><a href="docs/images/tool-templates.png"><img src="docs/images/tool-templates.png" width="100%" alt="客户端模板：Cursor、Cline、Roo Code、Continue、OpenCode 与 Claude Code"></a></td>
+    <td><a href="docs/images/agent-templates.png"><img src="docs/images/agent-templates.png" width="100%" alt="Agent 模板：OpenClaw、Dify、n8n、Flowise、LangGraph 与 CrewAI，以及各自需要的凭据类型"></a></td>
+  </tr>
+</table>
+
+Keynest 负责保存和关联凭据，不会自动修改外部工具的配置。[查看工具与 Skill 模板](research/skill-agent-templates-0.7.md)
+
+## 把常用入口摆成自己的样子
+
+为钥匙串选择最多 **8 个挂件**，指定点击时复制的那把密钥；同平台有多个账号时，也能固定常用的一个。首页支持拖动整张平台卡片调整顺序，也可以用前移、后移按钮，最后选择保存、取消或恢复默认。
+
+<table>
+  <tr>
+    <th width="50%">选挂件，也选它对应的密钥</th>
+    <th width="50%">按使用习惯排列首页</th>
+  </tr>
+  <tr>
+    <td><a href="docs/images/keyring-customize.png"><img src="docs/images/keyring-customize.png" width="100%" alt="钥匙串定制：选择平台、调整挂件顺序，并为每个挂件指定点击时复制的密钥"></a></td>
+    <td><a href="docs/images/home-layout.png"><img src="docs/images/home-layout.png" width="100%" alt="首页布局编辑：完整平台卡片、前移后移按钮，以及恢复默认、取消与完成操作"></a></td>
+  </tr>
+</table>
+
+钥匙串在本机渲染，只接收平台名称、图标和颜色等展示信息，不持有密钥正文。挂件绑定和首页顺序随密钥库加密保存，并包含在加密备份里；支持系统的「减少动态效果」和「减少透明度」。
 
 ## 下载与开始使用
 
 **[下载 Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg)** · [发布说明与 SHA-256 校验文件](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
 
-公开安装包只包含正式应用 `Keynest.app`。文件名中的 `r1` 是移除 Demo 的打包修订，正式 App 的版本与二进制保持不变。
+公开安装包只包含 `Keynest.app`。`r1` 为打包修订，详见发布说明。
 
 需要 **macOS 14 或更新版本**。当前提供 Apple Silicon 安装包；Intel Mac 可尝试从源码构建，但尚未验证。
 
@@ -72,9 +113,11 @@
 
 ## 本地保存，安全边界说清楚
 
-密钥库整体使用 **AES-256-GCM** 加密，主密码通过 **PBKDF2-HMAC-SHA256（600,000 次迭代、随机盐）**派生加密密钥。Touch ID 的解锁能力由 Apple Secure Enclave 保护。
+密钥库整体使用 **AES-256-GCM** 加密，主密码通过 **PBKDF2-HMAC-SHA256**（600,000 次迭代、随机盐）派生加密密钥。Touch ID 的解锁能力由 Apple Secure Enclave 保护。
 
+- 支持的 Mac 可使用 Touch ID 解锁，主密码始终可作备用。
 - 不需要云端账户，不主动上传或同步密钥库。
+- 支持导出本地加密备份，也能将备份中的条目合并到现有密钥库。
 - 闲置 10 分钟或系统休眠后自动锁定。
 - 复制时禁用通用剪贴板同步；60 秒后清除本次复制内容，不覆盖后来复制的其他内容。第三方剪贴板工具仍可能保存副本。
 - 额度查询需主动开启并手动刷新。目前支持 DeepSeek、硅基流动和 OpenRouter 的部分余额或用量信息，**不提供全平台实时额度同步**。
@@ -84,6 +127,8 @@
 [安全机制与限制](macos/README.md#安全边界) · [0.8.1 检查记录](research/security-review-0.8.1.md) · [私下报告漏洞](SECURITY.md)
 
 ## 从源码构建
+
+> **源码进展：** `main` 包含 0.12.0 候选版的实时卡片让位与精修 Blender 挂件，最终原生界面验收尚未完成。上方截图及可下载安装包均为 0.11.1。[验证记录](macos/verification.md) · [模型预览与源文件](macos/Resources/KeychainArt/README.md)
 
 原生 App 使用 SwiftUI / AppKit，首页钥匙串使用 SceneKit 本地渲染，没有第三方 Swift Package 依赖。需要 macOS 和 Apple Command Line Tools；不需要 Node.js、完整 Xcode 或 Blender。Blender 只用于开发时重建已随项目提供的 [立体资源](macos/Resources/KeychainArt/README.md)。
 
@@ -95,20 +140,6 @@ zsh scripts/install-apps.sh
 ```
 
 默认只构建和安装正式 App。安装脚本会校验并备份已有 App，不会改动密钥库。构建产物位于 `macos/dist/apps.noindex/`；请运行安装后的副本。
-
-<details>
-<summary><strong>可选：本地开发测试 Demo</strong></summary>
-
-Demo 不作为 GitHub Release 安装包发布。完成上面的正式 App 构建后，可在本地额外执行：
-
-```sh
-zsh scripts/build-demo-app.sh
-zsh scripts/install-apps.sh --with-demo
-```
-
-打开 `~/Applications/Keynest Demo.app`，输入公开密码 **`Keynest-Demo-2026`**，无需用户名。新建演示库包含 **34 把虚构密钥和 10 个工具**，与正式库分开存储，不发起额度查询，也不支持导入导出或改密码。**不要在 Demo 中保存真实凭据。**
-
-</details>
 
 [完整构建与打包说明](macos/README.md#从源码构建) · [测试与贡献指南](CONTRIBUTING.md) · [更多文档](docs/README.md)
 

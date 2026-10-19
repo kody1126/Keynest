@@ -21,45 +21,90 @@
 
 <p align="center">Apple Silicon · Chinese interface · Free and open source</p>
 
-> **Source preview:** `main` contains the 0.12.0 candidate with live card reordering and refined Blender charms. Final native UI verification is pending; the downloadable release remains 0.11.1. [Verification record](macos/verification.md) · [3D asset previews and source files](macos/Resources/KeychainArt/README.md)
-
 <p align="center">
-  <img src="docs/images/home.jpg" width="1000" alt="Keynest Home: provider cards with account and environment labels to distinguish multiple keys, each with a Copy button">
+  <a href="docs/images/keyring.png"><img src="docs/images/keyring.png" width="1000" alt="Keynest Home with a three-dimensional keyring above provider cards"></a>
 </p>
-<p align="center"><sub>Actual app screenshot using fictional data from the local development Demo; public downloads do not include the Demo.</sub></p>
-
-## Find the right key, faster
+<p align="center"><sub>Keynest 0.11.1 · Your most-used keys, close at hand.</sub></p>
 
 One model provider can mean several keys. One Agent can need access to search, a browser, and a database. Keynest keeps these credentials in one local vault: save them once, then find the provider on Home and copy the key you need.
 
-- **Ready when you open it** — Home cards fit their content in a compact layout, with search at the top right and a favorites filter. No need to open an editor just to copy a key.
-- **Click a charm to copy** — The keyring keeps its 3D enamel brand charms and six-color glass keys, without the platform buttons underneath. Choose a key for a charm, then click to copy. When a provider has several keys, select by name, account, and environment first.
-- **Customize your shortcuts** — Click the metal clasp or **Customize (定制)** to select and reorder 0–8 charms from 61 brands and your saved custom providers. You can still drag, reset, or collapse it.
-- **Put Home in your order** — Use **[Edit Layout (编辑布局)](docs/images/home-layout.jpg)** to move complete cards; the 0.12 source candidate adds live reflow of neighboring cards and a landing animation. Previous/next buttons, Cancel, and restore-default options remain available. Automatic charms follow the first three providers on Home.
-- **Multiple keys, easy to tell apart** — Account labels, environments, and API addresses distinguish personal, team, development, and production use.
-- **Choose a provider, paste your key** — 61 built-in presets cover OpenAI, Claude, Gemini, DeepSeek, Cloudflare, GitHub, and more, with brand icons and official API links.
-- **Organize keys by tool** — 25 tool and Skill templates cover Cursor, Cline, Dify, n8n, and more. The same key can be linked to several tools.
-- **Unlock with Touch ID** — Supported Macs can use the system fingerprint prompt, with your master password always available as a fallback.
-- **Keep an encrypted backup** — Export your vault locally, or merge entries from a backup into an existing vault.
+<p align="center">
+  <a href="#open-home-find-a-provider-copy-a-key">Home</a> ·
+  <a href="#keep-personal-team-and-development-keys-separate">Multiple keys</a> ·
+  <a href="#choose-from-61-providers">Providers</a> ·
+  <a href="#organize-keys-around-your-tools-skills-and-agents">Tools &amp; Skills</a> ·
+  <a href="#make-the-keyring-and-home-your-own">Customization</a>
+</p>
+
+## Open Home, find a provider, copy a key
+
+Search by provider, key name, account, or environment, filter your favorites, and copy directly from a card. Cards fit their content in a compact layout. Collapse the keyring when you want more room for provider cards.
+
+<p align="center">
+  <a href="docs/images/home.png"><img src="docs/images/home.png" width="1000" alt="Home showing compact provider cards, search, filters, and a Copy button for each key"></a>
+</p>
+
+## Keep personal, team, and development keys separate
+
+Save several keys for the same provider and distinguish them by name, account, environment, and API address. Link a key to the tools that use it, so you can find the right credential without keeping duplicate copies.
+
+<p align="center">
+  <a href="docs/images/key-details.png"><img src="docs/images/key-details.png" width="1000" alt="Key details showing account, environment, API address, and associated tools"></a>
+</p>
+
+## Choose from 61 providers
+
+OpenAI, Claude, Gemini, DeepSeek, Cloudflare, GitHub, and more are ready to select, with brand icons and official API links. Choose the provider, paste your own key, and save. Custom providers are supported too.
+
+<p align="center">
+  <a href="docs/images/providers.png"><img src="docs/images/providers.png" width="800" alt="Provider picker with model and service presets, brand icons, and categories for different uses"></a>
+</p>
+
+## Organize keys around your tools, Skills, and Agents
+
+Start with 25 templates for tools such as Cursor, Cline, Dify, and n8n. Reuse a saved key across several tools or add a missing credential when you need it. Keynest organizes these relationships; it does not automatically change external tools' configuration.
+
+<table>
+  <tr>
+    <td width="50%" align="center"><a href="docs/images/tool-templates.png"><img src="docs/images/tool-templates.png" width="100%" alt="Tool template picker with coding assistants and their provider requirements"></a></td>
+    <td width="50%" align="center"><a href="docs/images/agent-templates.png"><img src="docs/images/agent-templates.png" width="100%" alt="Agent and workflow templates for organizing related API credentials"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Coding tools and assistants</td>
+    <td align="center">Agents, Skills, and workflows</td>
+  </tr>
+</table>
+
+[Browse the provider catalog](research/api-catalog-0.7.md) · [Explore the tool templates](research/skill-agent-templates-0.7.md)
+
+## Make the keyring and Home your own
+
+Choose up to eight charms and decide which key each one copies. When a provider has multiple keys, select the intended account and environment in **Customize (定制)**; afterward, clicking its charm copies that key directly. You can reorder the charms, reset their position, or collapse the keyring.
+
+Use **Edit Layout (编辑布局)** to drag complete provider cards into your preferred order, or adjust them with the previous and next buttons. Save when you are happy, cancel your changes, or restore the default order.
+
+<table>
+  <tr>
+    <td width="50%" align="center"><a href="docs/images/keyring-customize.png"><img src="docs/images/keyring-customize.png" width="100%" alt="Keyring customization showing charm selection and the key assigned to each provider"></a></td>
+    <td width="50%" align="center"><a href="docs/images/home-layout.png"><img src="docs/images/home-layout.png" width="100%" alt="Home layout editor with complete provider cards and controls to save, cancel, or restore the default order"></a></td>
+  </tr>
+  <tr>
+    <td align="center">Choose your charms and their keys</td>
+    <td align="center">Arrange your provider cards</td>
+  </tr>
+</table>
 
 The keyring renders locally and receives only display information such as provider names, artwork, and colors; it does not hold secret values. Charm bindings and Home order are encrypted with the vault and included in encrypted backups. It respects Reduce Motion and Reduce Transparency.
 
-<details>
-<summary><strong>Explore the tool templates</strong></summary>
-
 <p align="center">
-  <img src="docs/images/tool-templates.jpg" width="720" alt="Keynest tool template picker showing Cursor, Cline, Roo Code, Continue, and other templates">
+  <sub>All screenshots show the Keynest 0.11.1 interface.</sub>
 </p>
-
-Reuse existing keys for a tool or add the ones it needs. Keynest organizes credentials without automatically changing the tools' configuration. [Provider catalog](research/api-catalog-0.7.md) · [Tool templates](research/skill-agent-templates-0.7.md)
-
-</details>
 
 ## Download and get started
 
 **[Download Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
 
-Public downloads contain only the regular `Keynest.app`. The `r1` filename suffix marks a packaging revision that removes the Demo; the regular app's version and binary are unchanged.
+The public download includes only `Keynest.app`. See the [release notes](https://github.com/kody1126/Keynest/releases/tag/v0.11.1) for packaging revision details.
 
 Requires **macOS 14 or later**. A package is available for Apple Silicon. You can try building from source on an Intel Mac, but that configuration has not been verified.
 
@@ -75,6 +120,8 @@ Requires **macOS 14 or later**. A package is available for Apple Silicon. You ca
 The entire vault is encrypted with **AES-256-GCM**. Its encryption key is derived from your master password using **PBKDF2-HMAC-SHA256 with 600,000 iterations and a random salt**. Touch ID unlock is protected by Apple's Secure Enclave.
 
 - No cloud account is required, and Keynest does not initiate vault uploads or synchronization.
+- Supported Macs can unlock with Touch ID, with your master password available as a fallback.
+- Export encrypted backups locally, or merge entries from a backup into your existing vault.
 - The vault locks after 10 minutes of inactivity or when your Mac sleeps.
 - Universal Clipboard synchronization is disabled for each copy. Keynest clears it after 60 seconds without replacing anything you copy afterward; third-party clipboard tools may still retain a copy.
 - Quota queries must be enabled explicitly and refreshed manually. They currently support selected balance or usage information from DeepSeek, SiliconFlow, and OpenRouter. **There is no real-time quota synchronization across all providers.**
@@ -84,6 +131,8 @@ This project has not undergone an independent security audit. Encryption at rest
 [Security mechanisms and limits](docs/guide.en.md#data-and-security) · [0.8.1 review record](research/security-review-0.8.1.md) · [Report a vulnerability privately](SECURITY.md)
 
 ## Build from source
+
+> **Source preview:** `main` contains the 0.12.0 candidate with live card reordering and refined Blender charms. Final native UI verification is pending; the downloadable release and screenshots above remain 0.11.1. [Verification record](macos/verification.md) · [3D asset previews and source files](macos/Resources/KeychainArt/README.md)
 
 The native app uses SwiftUI and AppKit, with SceneKit rendering the Home keyring locally. There are no third-party Swift Package dependencies. You need macOS and Apple's Command Line Tools; Node.js, a full Xcode installation, and Blender are not required. Blender is used only to regenerate the bundled [3D assets](macos/Resources/KeychainArt/README.md) during development.
 
@@ -95,20 +144,6 @@ zsh scripts/install-apps.sh
 ```
 
 The default steps build and install only the regular app. The installer verifies and backs up an existing app without modifying your vault. Build outputs are placed in `macos/dist/apps.noindex/`; run the installed copy.
-
-<details>
-<summary><strong>Optional: local development Demo</strong></summary>
-
-The Demo is not distributed as a GitHub Release download. After building the regular app above, you can additionally run:
-
-```sh
-zsh scripts/build-demo-app.sh
-zsh scripts/install-apps.sh --with-demo
-```
-
-Open `~/Applications/Keynest Demo.app` and enter the public password **`Keynest-Demo-2026`**. No username is needed. A new demo vault contains **34 fictional keys and 10 tools**, stores its data separately, makes no quota requests, and disables import, export, and password changes. **Do not store real credentials in the Demo.**
-
-</details>
 
 [Full build and packaging instructions](docs/guide.en.md#development-and-references) · [Testing and contributing](CONTRIBUTING.md) · [More documentation](docs/README.md)
 
