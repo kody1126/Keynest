@@ -18,6 +18,8 @@ For each completed update:
 
 Respect a later instruction to keep an update local or not push. Do not install background watchers, cron jobs or hooks that automatically publish unreviewed files. Release assets are separate from source commits; publish a new release only when a version is intentionally prepared. Never overwrite an existing release asset without a clear versioning decision.
 
+Public release packages must contain only `Keynest.app`. Never upload `Keynest Demo.app` or an installer containing it to GitHub. The separately identified Demo is for optional local development and testing only; its source and fictitious test fixtures may remain in the repository. Packaging must not call the Demo build script. Before uploading, run `macos/scripts/verify-release-package.sh` on the final disk image. For a packaging-only revision of an existing release, use a new asset filename and checksum, preserve the app binary, and document the revision instead of silently overwriting the original download.
+
 ## Checks
 
 - Native core: `cd macos && bash scripts/run-checks.sh`

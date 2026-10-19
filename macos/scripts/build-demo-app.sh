@@ -54,4 +54,5 @@ fi
 mv "$staged_app" "$demo_app"
 print "Built: $demo_app"
 print "No vault was created or changed. The demo app initializes its separate fictional library when opened."
-print "Use scripts/install-apps.sh to install; do not launch the build copy."
+print "Local testing only; do not upload this app to GitHub Releases."
+print "Use scripts/install-apps.sh --with-demo to install; do not launch the build copy."

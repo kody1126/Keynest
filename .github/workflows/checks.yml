@@ -28,6 +28,8 @@ jobs:
           persist-credentials: false
       - name: Build native application
         run: swift build --package-path macos --configuration release
+      - name: Verify regular-app-only release package
+        run: zsh macos/scripts/package-app.sh
       - name: Run core checks
         run: bash macos/scripts/run-checks.sh
       - name: Run isolated AppModel checks

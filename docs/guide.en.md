@@ -14,13 +14,26 @@ Download a macOS package from [GitHub Releases](https://github.com/kody1126/Keyn
 open "$HOME/Applications/Keynest.app"
 ```
 
-The published disk image is `Keynest-0.11.1-arm64.dmg` ([download v0.11.1](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)); the 0.12.0 candidate package has not been released. It contains both `Keynest.app` and the separate `Keynest Demo.app`. Install both into `~/Applications` before opening them. The apps use local ad-hoc signatures; they are not signed with an Apple Developer ID or notarized by Apple.
+The published disk image is [`Keynest-0.11.1-arm64-r1.dmg`](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg); the 0.12.0 candidate package has not been released. Public downloads contain only `Keynest.app`. The `r1` packaging revision removes the Demo without changing the regular app's version or binary. Install `Keynest.app` into `~/Applications` before opening it. It uses a local ad-hoc signature and is not signed with an Apple Developer ID or notarized by Apple.
+
+To check the download, save the DMG and its matching [`Keynest-0.11.1-arm64-r1.dmg.sha256`](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg.sha256) file in the same folder, then run there:
+
+```sh
+shasum -a 256 -c Keynest-0.11.1-arm64-r1.dmg.sha256
+```
 
 On first launch, set a master password of at least **12 characters**. On Home, choose a provider, paste your key, and select **Save to Home (保存到首页)**. Presets fill in the name and a common API address; project-specific addresses must be entered as indicated. Expand the optional fields to add an account label or environment. **Full Editor… (完整编辑…)** also lets you add tags, notes, and tool associations. Subsequent unlocks open Home by default. There is no master-password recovery.
 
 On a Mac that supports Touch ID, select **Enable Touch ID after unlocking (解锁后启用 Touch ID)**, or enable it in Settings after unlocking. Future launches can use the system fingerprint prompt, while the master password remains available as a fallback. Cancel fingerprint verification to switch to password entry. Touch ID must be enabled again after changing enrolled fingerprints, changing the master password, or moving to another Mac. Its unlock material stays on this Mac and is not included in exported encrypted backups.
 
-## Try the demo vault
+## Optional local development Demo
+
+The Demo is available only as an optional local development and testing build, not a GitHub Release download. After building the regular app as described below, run from `macos/`:
+
+```sh
+zsh scripts/build-demo-app.sh
+zsh scripts/install-apps.sh --with-demo
+```
 
 Open `~/Applications/Keynest Demo.app` and enter the test password **`Keynest-Demo-2026`**. No username is needed. This is a local demonstration vault, not a real account with any model provider.
 
@@ -130,14 +143,13 @@ bash scripts/run-keychain-attachment-checks.sh
 bash scripts/run-keychain-catalog-checks.sh
 bash scripts/run-keychain-asset-checks.sh
 zsh scripts/build-app.sh
-zsh scripts/build-demo-app.sh
 zsh scripts/package-app.sh
 zsh scripts/install-apps.sh
 ```
 
-Intermediate app bundles live only in `macos/dist/apps.noindex/`. Do not run them directly from the build directory or disk image. The installer places both apps in `~/Applications`. Before replacing an app, it checks its identity and signature, archives the old app in a verified ZIP under `.build/app-backups/`, and attempts rollback if installation fails. Installation does not launch either app, access a vault, or change system indexing settings.
+Intermediate app bundles live only in `macos/dist/apps.noindex/`. Do not run them directly from the build directory or disk image. By default, the installer places only `Keynest.app` in `~/Applications`; `--with-demo` explicitly includes a separately built local Demo. The default install leaves an existing Demo app untouched. Before replacing an app, it checks its identity and signature, archives the old app in a verified ZIP under `.build/app-backups/`, and attempts rollback if installation fails. Installation does not launch an app, access a vault, or change system indexing settings.
 
-The packaging script builds both apps, creates the DMG, verifies the disk image, and writes a SHA-256 checksum file. The [verification record](../macos/verification.md) is the reference for completed checks, builds, and hands-on app verification for each release.
+The packaging script builds and packages only `Keynest.app`, verifies the disk image, and writes a SHA-256 checksum file. It does not include a Demo even if one exists in the build directory. Running this script creates a local candidate package; it does not publish a release. The [verification record](../macos/verification.md) is the reference for completed checks, builds, and hands-on app verification for each release.
 
 The keyring checks run without windows: `run-keychain-checks.sh` exercises motion, click-versus-drag boundaries, and mesh validation without creating a renderer. `run-keychain-drag-checks.sh` checks off-center grips, chain links, and bounded rotation/extension by projecting solved poses back to the pointer. `run-keychain-catalog-checks.sh` uses fictional in-memory entries to check platform selection, ordering, automatic defaults, empty lists, and unavailable references. Visual quality and real window lifecycle behavior still require hands-on verification.
 

@@ -34,18 +34,19 @@
 ## 切换与重建
 
 1. 编辑 `macos/Resources/AppIcon.selection`，把内容设为一个编号：`A`、`B`、`C`、`D`、`E`、`F`、`G`、`H`、`C1`、`C2`、`C3` 或 `C4`。文件只需一行编号，当前为 `C2`。
-2. 在 `macos/` 目录执行下列命令。正式 App 从所选候选的 `.iconset` 编译 ICNS；演示 App 继承本次正式构建的图标。
+2. 在 `macos/` 目录执行下列命令。正式 App 从所选候选的 `.iconset` 编译 ICNS。
 
 ```sh
 zsh scripts/build-app.sh
-zsh scripts/build-demo-app.sh
 zsh scripts/install-apps.sh
 open ~/Applications/Keynest.app
 ```
 
-构建产物位于 `macos/dist/apps.noindex/Keynest.app` 和 `macos/dist/apps.noindex/Keynest Demo.app`。更新前先退出应用；安装脚本会校验并替换 `~/Applications/` 中的对应副本，将旧版压缩归档。日常使用只打开已安装版本，避免系统搜索收录多个开发副本。
+正式构建产物位于 `macos/dist/apps.noindex/Keynest.app`。更新前先退出应用；安装脚本会校验并替换 `~/Applications/` 中的对应副本，将旧版压缩归档。日常使用只打开已安装版本，避免系统搜索收录多个开发副本。
 
-如需新的分发包，在 `macos/` 目录运行 `zsh scripts/package-app.sh`，会重建两个 App 并打包。这里的选择只在构建时生效，应用没有运行时图标选择设置；切换编号不改动其他候选或密钥库。
+如需新的分发包，在 `macos/` 目录运行 `zsh scripts/package-app.sh`，只重建并打包正式 App。这里的选择只在构建时生效，应用没有运行时图标选择设置；切换编号不改动其他候选或密钥库。
+
+本地开发需要 Demo 时，额外执行 `zsh scripts/build-demo-app.sh` 和 `zsh scripts/install-apps.sh --with-demo`，它继承正式 App 的图标。Demo 不作为 GitHub Release 安装包发布。
 
 ## 生成脚本与后续修改
 
@@ -61,7 +62,6 @@ open ~/Applications/Keynest.app
 ```sh
 swift scripts/make-icon-c-palettes.swift Resources/design/options-c-palette
 zsh scripts/build-app.sh
-zsh scripts/build-demo-app.sh
 ```
 
 其他组的 PNG 与 `.iconset` 重建命令：

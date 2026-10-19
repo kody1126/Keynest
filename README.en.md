@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg">Download for macOS</a></strong>
+  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg">Download for macOS</a></strong>
   · <a href="README.md">简体中文</a>
   · <a href="docs/guide.en.md">User guide</a>
   · <a href="https://github.com/kody1126/Keynest/issues">Report an issue</a>
@@ -26,7 +26,7 @@
 <p align="center">
   <img src="docs/images/home.jpg" width="1000" alt="Keynest Home: provider cards with account and environment labels to distinguish multiple keys, each with a Copy button">
 </p>
-<p align="center"><sub>Actual app screenshot using fictional data from the separate Demo app.</sub></p>
+<p align="center"><sub>Actual app screenshot using fictional data from the local development Demo; public downloads do not include the Demo.</sub></p>
 
 ## Find the right key, faster
 
@@ -57,7 +57,9 @@ Reuse existing keys for a tool or add the ones it needs. Keynest organizes crede
 
 ## Download and get started
 
-**[Download Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
+**[Download Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg)** · [Release notes and SHA-256 checksums](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
+
+Public downloads contain only the regular `Keynest.app`. The `r1` filename suffix marks a packaging revision that removes the Demo; the regular app's version and binary are unchanged.
 
 Requires **macOS 14 or later**. A package is available for Apple Silicon. You can try building from source on an Intel Mac, but that configuration has not been verified.
 
@@ -67,15 +69,6 @@ Requires **macOS 14 or later**. A package is available for Apple Silicon. You ca
 
 > [!IMPORTANT]
 > This is a preview release with a local ad-hoc signature. It is not signed with an Apple Developer ID or notarized, so macOS may block the first launch. Download from this repository or build from source; see [Apple’s first-launch guidance](https://support.apple.com/en-us/102445). Your master password cannot be recovered; keep it safe and export encrypted backups regularly.
-
-<details>
-<summary><strong>Want to try it first? The download includes a separate Demo app</strong></summary>
-
-Copy `Keynest Demo.app` to `~/Applications`, open it, and enter the public password **`Keynest-Demo-2026`**. No username is needed. Its **34 fictional keys and 10 tools** let you try searching, copying, adding keys, and linking them to tools.
-
-The Demo stores its vault separately, makes no quota requests, and disables import, export, and password changes. **Do not store real credentials in the Demo.**
-
-</details>
 
 ## Local storage, clear security boundaries
 
@@ -98,11 +91,24 @@ The native app uses SwiftUI and AppKit, with SceneKit rendering the Home keyring
 git clone https://github.com/kody1126/Keynest.git
 cd Keynest/macos
 zsh scripts/build-app.sh
-zsh scripts/build-demo-app.sh
 zsh scripts/install-apps.sh
 ```
 
-The installer verifies and backs up existing apps without modifying your vault. Build outputs are placed in `macos/dist/apps.noindex/`; run the installed copies.
+The default steps build and install only the regular app. The installer verifies and backs up an existing app without modifying your vault. Build outputs are placed in `macos/dist/apps.noindex/`; run the installed copy.
+
+<details>
+<summary><strong>Optional: local development Demo</strong></summary>
+
+The Demo is not distributed as a GitHub Release download. After building the regular app above, you can additionally run:
+
+```sh
+zsh scripts/build-demo-app.sh
+zsh scripts/install-apps.sh --with-demo
+```
+
+Open `~/Applications/Keynest Demo.app` and enter the public password **`Keynest-Demo-2026`**. No username is needed. A new demo vault contains **34 fictional keys and 10 tools**, stores its data separately, makes no quota requests, and disables import, export, and password changes. **Do not store real credentials in the Demo.**
+
+</details>
 
 [Full build and packaging instructions](docs/guide.en.md#development-and-references) · [Testing and contributing](CONTRIBUTING.md) · [More documentation](docs/README.md)
 

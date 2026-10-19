@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg">下载 macOS 版</a></strong>
+  <strong><a href="https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg">下载 macOS 版</a></strong>
   · <a href="README.en.md">English</a>
   · <a href="macos/README.md">使用文档</a>
   · <a href="https://github.com/kody1126/Keynest/issues">反馈问题</a>
@@ -26,7 +26,7 @@
 <p align="center">
   <img src="docs/images/home.jpg" width="1000" alt="Keynest 首页：按平台展示密钥，以账号和环境区分同平台的多把密钥，并直接复制">
 </p>
-<p align="center"><sub>真实 App 截图，使用独立 Demo 的虚构数据。</sub></p>
+<p align="center"><sub>真实 App 截图，使用本地开发测试 Demo 的虚构数据；公开安装包不包含 Demo。</sub></p>
 
 ## 少翻几个网站，多留一点时间
 
@@ -57,7 +57,9 @@
 
 ## 下载与开始使用
 
-**[下载 Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64.dmg)** · [发布说明与 SHA-256 校验文件](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
+**[下载 Keynest 0.11.1 · Apple Silicon](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg)** · [发布说明与 SHA-256 校验文件](https://github.com/kody1126/Keynest/releases/tag/v0.11.1)
+
+公开安装包只包含正式应用 `Keynest.app`。文件名中的 `r1` 是移除 Demo 的打包修订，正式 App 的版本与二进制保持不变。
 
 需要 **macOS 14 或更新版本**。当前提供 Apple Silicon 安装包；Intel Mac 可尝试从源码构建，但尚未验证。
 
@@ -67,15 +69,6 @@
 
 > [!IMPORTANT]
 > 当前是预览版，采用本地 ad-hoc 签名，尚未使用 Apple Developer ID 签名或公证，首次打开可能被 macOS 拦截。请从本仓库下载，或从源码构建；首次打开可参考 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。主密码无法找回，请妥善保存并定期导出加密备份。
-
-<details>
-<summary><strong>想先试用？安装包里附有独立 Demo</strong></summary>
-
-将 `Keynest Demo.app` 也复制到 `~/Applications` 后打开，输入公开密码 **`Keynest-Demo-2026`**，不需要用户名。内有 **34 把虚构密钥和 10 个工具**，可以体验搜索、复制、添加与关联。
-
-Demo 与正式密钥库分开存储，不发起额度查询，也不支持导入导出或改密码。**不要在 Demo 中保存真实凭据。**
-
-</details>
 
 ## 本地保存，安全边界说清楚
 
@@ -98,11 +91,24 @@ Demo 与正式密钥库分开存储，不发起额度查询，也不支持导入
 git clone https://github.com/kody1126/Keynest.git
 cd Keynest/macos
 zsh scripts/build-app.sh
-zsh scripts/build-demo-app.sh
 zsh scripts/install-apps.sh
 ```
 
-安装脚本会校验并备份已有 App，不会改动密钥库。构建产物位于 `macos/dist/apps.noindex/`；请运行安装后的副本。
+默认只构建和安装正式 App。安装脚本会校验并备份已有 App，不会改动密钥库。构建产物位于 `macos/dist/apps.noindex/`；请运行安装后的副本。
+
+<details>
+<summary><strong>可选：本地开发测试 Demo</strong></summary>
+
+Demo 不作为 GitHub Release 安装包发布。完成上面的正式 App 构建后，可在本地额外执行：
+
+```sh
+zsh scripts/build-demo-app.sh
+zsh scripts/install-apps.sh --with-demo
+```
+
+打开 `~/Applications/Keynest Demo.app`，输入公开密码 **`Keynest-Demo-2026`**，无需用户名。新建演示库包含 **34 把虚构密钥和 10 个工具**，与正式库分开存储，不发起额度查询，也不支持导入导出或改密码。**不要在 Demo 中保存真实凭据。**
+
+</details>
 
 [完整构建与打包说明](macos/README.md#从源码构建) · [测试与贡献指南](CONTRIBUTING.md) · [更多文档](docs/README.md)
 

@@ -10,7 +10,13 @@ Keynest 0.8 增加日常取用的首页：解锁后按平台找到密钥，每�
 
 ## 安装与首次使用
 
-本机正式应用位置为 `~/Applications/Keynest.app`，独立演示版为 `~/Applications/Keynest Demo.app`。从当前源码构建的候选包位于 `macos/dist/Keynest-0.12.0-arm64.dmg`，同时包含两个 App；统一安装到 `~/Applications` 后打开，不从 DMG 或构建目录运行。
+公开下载 [`Keynest-0.11.1-arm64-r1.dmg`](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg) 只包含正式应用 `Keynest.app`，安装到 `~/Applications/Keynest.app` 后打开，不从 DMG 或构建目录运行。`r1` 是移除 Demo 的打包修订，正式 App 的版本与二进制保持不变。0.12.0 候选版尚未发布；当前源码打包也只包含正式 App。
+
+将 DMG 与同一发布中的 [`Keynest-0.11.1-arm64-r1.dmg.sha256`](https://github.com/kody1126/Keynest/releases/download/v0.11.1/Keynest-0.11.1-arm64-r1.dmg.sha256) 下载到同一目录后，可在该目录校验：
+
+```sh
+shasum -a 256 -c Keynest-0.11.1-arm64-r1.dmg.sha256
+```
 
 应用启用 **Hardened Runtime**，采用 **ad-hoc 本地签名**，未使用 Apple Developer ID 签名，也未经过 Apple 公证。这适合本机实验构建，不等于经 Apple 认证的分发版本。
 
@@ -34,6 +40,15 @@ Keynest 0.8 增加日常取用的首页：解锁后按平台找到密钥，每�
 关闭或删除应用不会自动删除此数据目录。原生版本不会读取项目根目录的 Web `.data/vault.json`，也不会扫描其他应用的密钥文件。
 
 ## 独立演示版
+
+Demo 仅供本地开发与测试，可从源码选择构建，不作为 GitHub Release 安装包发布。完成下方的正式 App 构建后，在本目录额外执行：
+
+```sh
+zsh scripts/build-demo-app.sh
+zsh scripts/install-apps.sh --with-demo
+```
+
+这会将本地演示版安装到 `~/Applications/Keynest Demo.app`。默认构建、打包和安装步骤都不包含 Demo；默认安装也不会移除或更新已存在的 Demo。
 
 打开 `Keynest Demo.app`，使用公开测试密码 **`Keynest-Demo-2026`** 解锁，**没有用户名**。这是 Keynest 自己的本地测试库，不会注册或提供任何真实模型 API 账户。
 
@@ -249,12 +264,11 @@ Web 0.1 实验使用另一种加密格式；其 `vault.json` 不能作为原生 
 
 ```sh
 zsh scripts/build-app.sh
-zsh scripts/build-demo-app.sh
 zsh scripts/install-apps.sh
 open "$HOME/Applications/Keynest.app"
 ```
 
-两个构建产物会采用所选样式；安装脚本验证并替换已安装副本后才会更新。若要重新生成分发包，运行 `zsh scripts/package-app.sh`。这是构建时选择，不是 App 内的运行时设置。各样式资源、生成脚本和完整重建说明见 [图标样式库](Resources/design/README.md)。
+正式 App 会采用所选样式；安装脚本验证并替换已安装副本后才会更新。可选的本地 Demo 需要按上面的独立演示版步骤重新构建并显式安装。若要重新生成仅含正式 App 的本地分发包，运行 `zsh scripts/package-app.sh`。这是构建时选择，不是 App 内的运行时设置。各样式资源、生成脚本和完整重建说明见 [图标样式库](Resources/design/README.md)。
 
 ## 从源码构建
 
@@ -274,7 +288,6 @@ bash scripts/run-keychain-attachment-checks.sh
 bash scripts/run-keychain-catalog-checks.sh
 bash scripts/run-keychain-asset-checks.sh
 zsh scripts/build-app.sh
-zsh scripts/build-demo-app.sh
 zsh scripts/package-app.sh
 zsh scripts/install-apps.sh
 ```
@@ -285,9 +298,9 @@ zsh scripts/install-apps.sh
 macos/dist/apps.noindex/Keynest.app
 ```
 
-`build-demo-app.sh` 复制已构建的正式 App，设置独立的 `local.keynest.demo` 标识和显示名称，再进行 ad-hoc 签名与验证。它输出 `macos/dist/apps.noindex/Keynest Demo.app`，不启动应用，也不创建或改写任何密钥库。
+可选的 `build-demo-app.sh` 仅供本地开发测试：复制已构建的正式 App，设置独立的 `local.keynest.demo` 标识和显示名称，再进行 ad-hoc 签名与验证。它输出 `macos/dist/apps.noindex/Keynest Demo.app`，不启动应用，也不创建或改写任何密钥库。安装它必须显式使用 `install-apps.sh --with-demo`。
 
-`package-app.sh` 会先调用上述两个构建脚本，将正式 App 和 Demo App 一起放入与本机架构匹配的 DMG，使用 `hdiutil verify` 校验，并生成 `.sha256` 校验文件。Apple Silicon 上的产物为：
+`package-app.sh` 只调用正式 App 构建脚本，将 `Keynest.app` 放入与本机架构匹配的 DMG，使用 `hdiutil verify` 校验，并生成 `.sha256` 校验文件。即使构建目录中已有 Demo，也不会加入安装包；运行脚本只生成本地候选包，不会发布到 GitHub。Apple Silicon 上的本地候选产物为：
 
 ```text
 macos/dist/Keynest-0.12.0-arm64.dmg
@@ -300,7 +313,7 @@ macos/dist/Keynest-0.12.0-arm64.dmg.sha256
 open "$HOME/Applications/Keynest.app"
 ```
 
-`install-apps.sh` 仅安装本项目的两个 App。它核对源与目标的 bundle ID、执行文件和签名，拒绝符号链接，并要求先关闭正在运行的旧 App。每份旧 App 会先使用 `ditto` 归档到 `.build/app-backups/时间-UUID.zip`，经压缩包检查、解压、签名和内容对比后才替换；失败时尝试回滚。备份只保存 App 本身，不含密钥库。脚本不自动启动 App、不改系统索引设置、不操作 Dock，也不清理其他旧副本。
+`install-apps.sh` 默认仅安装本项目的正式 App；只有传入 `--with-demo` 才同时安装本地构建的 Demo。它核对所选 App 的源与目标 bundle ID、执行文件和签名，拒绝符号链接，并要求先关闭正在运行的旧 App。每份旧 App 会先使用 `ditto` 归档到 `.build/app-backups/时间-UUID.zip`，经压缩包检查、解压、签名和内容对比后才替换；失败时尝试回滚。备份只保存 App 本身，不含密钥库。脚本不自动启动 App、不改系统索引设置、不操作 Dock，也不清理其他旧副本；默认安装不改动已有 Demo。
 
 本机仅安装 Command Line Tools，缺少 XCTest，直接运行 `swift test` 无法完成。`run-checks.sh` 使用独立 Swift 断言运行器执行 `Tests/KeynestCoreTests/` 中的原有测试方法，不改写断言与测试体，也不访问正式密钥库或真实服务商账号。运行器先验证失败断言确实产生非零退出码，再执行全部测试。各版本核心逻辑、数据升级、首页分组搜索、构建及 App 实机交互的检查范围与结果统一以 [验证记录](verification.md) 为准。
 

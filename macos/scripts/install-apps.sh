@@ -1,5 +1,6 @@
 #!/bin/zsh
-# Install only this project's two apps. Never launch them, access their vaults,
+# Install Keynest; --with-demo also installs the locally built test app.
+# Never launch apps, access their vaults,
 # change indexing settings, or modify any other installed application.
 set -euo pipefail
 
@@ -7,10 +8,27 @@ project_dir="${0:A:h:h}"
 build_root="$project_dir/dist/apps.noindex"
 install_root="$HOME/Applications"
 backup_root="$project_dir/.build/app-backups"
-app_names=("Keynest.app" "Keynest Demo.app")
-bundle_ids=("local.keynest.mac" "local.keynest.demo")
+app_names=("Keynest.app")
+bundle_ids=("local.keynest.mac")
 
 fail() { print -u2 -- "$1"; exit 1; }
+if (( $# > 1 )); then
+    fail "Usage: scripts/install-apps.sh [--with-demo]"
+fi
+case "${1:-}" in
+    '') ;;
+    --with-demo)
+        app_names+=("Keynest Demo.app")
+        bundle_ids+=("local.keynest.demo")
+        ;;
+    --help|-h)
+        print "Usage: scripts/install-apps.sh [--with-demo]"
+        print "Installs Keynest only by default. --with-demo includes the locally built test app."
+        exit 0
+        ;;
+    *) fail "Unknown option. Usage: scripts/install-apps.sh [--with-demo]" ;;
+esac
+app_count=${#app_names}
 check_directory() {
     [[ ! -L "$1" ]] || fail "Refusing a symbolic-link directory: $1"
     [[ ! -e "$1" || -d "$1" ]] || fail "Expected a directory: $1"
@@ -28,10 +46,10 @@ verify_app() {
 for directory in "$project_dir/dist" "$build_root" "$project_dir/.build" "$backup_root" "$install_root"; do
     check_directory "$directory"
 done
-[[ -d "$build_root" ]] || fail "Run scripts/package-app.sh or both build scripts first."
+[[ -d "$build_root" ]] || fail "Run scripts/build-app.sh first; --with-demo also needs scripts/build-demo-app.sh."
 
 # Preflight both sides before creating backups or changing either installed app.
-for app_index in 1 2; do
+for (( app_index = 1; app_index <= app_count; app_index++ )); do
     source_app="$build_root/${app_names[$app_index]}"
     target_app="$install_root/${app_names[$app_index]}"
     verify_app "$source_app" "${bundle_ids[$app_index]}" || fail "Invalid source app or signature: $source_app"
@@ -55,7 +73,7 @@ installation_complete=0
 finish() {
     local result="$1" rollback_failed=0 rollback_index target_app previous_app
     if (( ! installation_complete )); then
-        for rollback_index in 2 1; do
+        for (( rollback_index = app_count; rollback_index >= 1; rollback_index-- )); do
             target_app="$install_root/${app_names[$rollback_index]}"
             previous_app="$stage_dir/previous/${app_names[$rollback_index]}"
             if (( new_installed[$rollback_index] )); then
@@ -87,7 +105,7 @@ trap 'finish $?' EXIT
 
 # Every prior app gets a portable zip, followed by an extraction and identity /
 # signature check. Keep only verified archives; no vault path is involved.
-for app_index in 1 2; do
+for (( app_index = 1; app_index <= app_count; app_index++ )); do
     app_name="${app_names[$app_index]}"
     expected_id="${bundle_ids[$app_index]}"
     source_app="$build_root/$app_name"
@@ -111,7 +129,7 @@ for app_index in 1 2; do
     fi
 done
 
-for app_index in 1 2; do
+for (( app_index = 1; app_index <= app_count; app_index++ )); do
     app_name="${app_names[$app_index]}"
     target_app="$install_root/$app_name"
     if [[ -e "$target_app" ]]; then
@@ -131,6 +149,7 @@ for app_index in 1 2; do
 done
 
 installation_complete=1
-print "Installed: $install_root/Keynest.app"
-print "Installed: $install_root/Keynest Demo.app"
+for app_name in "${app_names[@]}"; do
+    print "Installed: $install_root/$app_name"
+done
 print "Apps were not launched. No vault or system indexing setting was changed."
